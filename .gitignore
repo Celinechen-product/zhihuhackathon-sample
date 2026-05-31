@@ -1,3 +1,8 @@
 .vercel
 
 .DS_Store
+.env
+.venv/
+__pycache__/
+*.py[cod]
+backend/tmp/

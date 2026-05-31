@@ -425,6 +425,80 @@
       box-shadow: 0 22px 46px rgba(216, 154, 69, 0.28);
     }
 
+    .clarification-checking {
+      width: min(860px, 100%);
+      margin: 14px auto 0;
+      color: var(--faint);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .clarification-card {
+      width: min(860px, 100%);
+      margin: 18px auto 0;
+      padding: 20px 22px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.84);
+      box-shadow: 0 16px 44px rgba(52, 43, 32, 0.07);
+      text-align: left;
+      animation: fadeUp 360ms var(--ease) both;
+    }
+
+    .clarification-kicker {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .clarification-card h3 {
+      margin: 0;
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.45;
+      font-weight: 900;
+    }
+
+    .clarification-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .clarification-option {
+      min-height: 40px;
+      padding: 9px 14px;
+      border: 1px solid rgba(216, 154, 69, 0.28);
+      border-radius: 999px;
+      color: #6f5a2b;
+      background: transparent;
+      font-weight: 800;
+      transition: 180ms ease;
+    }
+
+    .clarification-option:hover {
+      color: #3f2b0f;
+      border-color: rgba(216, 154, 69, 0.46);
+      background: rgba(255, 241, 199, 0.22);
+      transform: translateY(-1px);
+    }
+
+    .clarification-skip {
+      margin-top: 14px;
+      padding: 0;
+      border: 0;
+      color: rgba(111, 104, 95, 0.72);
+      background: transparent;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .clarification-skip:hover {
+      color: #6f5a2b;
+    }
+
     .hint {
       margin-top: 12px;
       color: var(--faint);
@@ -886,6 +960,96 @@
       gap: 16px;
       width: min(1180px, 100%);
       margin: 42px auto 0;
+    }
+
+    .path-showcase.compact-paths {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      width: min(1120px, 100%);
+      overflow-x: auto;
+      padding-inline: 4px;
+      scrollbar-width: none;
+    }
+
+    .path-showcase.compact-paths::-webkit-scrollbar {
+      display: none;
+    }
+
+    .path-showcase.compact-paths .path-card {
+      flex: 0 1 320px;
+      width: min(320px, 28vw);
+      min-width: 280px;
+    }
+
+    .path-showcase.paths-count-1 {
+      width: min(460px, 100%);
+    }
+
+    .path-showcase.paths-count-1 .path-card {
+      flex: 0 1 420px;
+      width: min(420px, 100%);
+    }
+
+    .path-showcase.paths-count-2 {
+      width: min(900px, 100%);
+    }
+
+    .path-showcase.paths-count-2 .path-card {
+      flex: 0 1 400px;
+      width: clamp(340px, 38vw, 400px);
+    }
+
+    .path-showcase.paths-count-3 {
+      width: min(1120px, 100%);
+    }
+
+    .path-showcase.paths-count-3 .path-card {
+      flex: 0 1 350px;
+      width: clamp(300px, 30vw, 350px);
+    }
+
+    .path-showcase.paths-count-4 {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      width: min(1180px, 100%);
+      justify-content: center;
+    }
+
+    @media (max-width: 980px) {
+      .path-showcase.paths-count-4 {
+        display: flex;
+        justify-content: flex-start;
+        overflow-x: auto;
+        padding-inline: 4px;
+        scrollbar-width: none;
+      }
+
+      .path-showcase.paths-count-4::-webkit-scrollbar {
+        display: none;
+      }
+
+      .path-showcase.paths-count-4 .path-card {
+        flex: 0 0 min(340px, 72vw);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .path-showcase.compact-paths,
+      .path-showcase.paths-count-4 {
+        justify-content: flex-start;
+      }
+
+      .path-showcase.compact-paths .path-card {
+        flex-basis: min(320px, 82vw);
+        width: min(320px, 82vw);
+        min-width: min(280px, 82vw);
+      }
+
+      .path-showcase.paths-count-4 .path-card {
+        flex-basis: min(320px, 82vw);
+        width: min(320px, 82vw);
+        min-width: min(280px, 82vw);
+      }
     }
 
     .path-showcase.is-expanded {
@@ -1401,6 +1565,363 @@
       font-size: 14px;
     }
 
+    .sample-wall-panel {
+      position: relative;
+      height: clamp(560px, calc(100vh - 150px), 660px);
+      min-height: 0;
+      padding: 30px;
+      overflow: hidden;
+      border-radius: 32px;
+      background: transparent;
+      transition: height 420ms var(--ease);
+    }
+
+    .sample-wall-panel.has-selection {
+      height: clamp(600px, calc(100vh - 138px), 680px);
+    }
+
+    .sample-wall {
+      position: relative;
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 100%;
+      min-height: 0;
+      transition: width 420ms var(--ease), opacity 300ms ease;
+    }
+
+    .sample-wall-panel.has-selection .sample-wall {
+      justify-content: flex-start;
+      width: calc(100% - 520px);
+      height: 100%;
+      min-height: 0;
+      padding-top: 4px;
+    }
+
+    .sample-wall-kicker {
+      margin: 0 auto 18px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.6;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .sample-wall-panel.has-selection .sample-wall-kicker {
+      margin-left: 0;
+      text-align: left;
+    }
+
+    .sample-wall-grid {
+      display: grid;
+      justify-content: center;
+      gap: 22px;
+      width: 100%;
+      max-width: 1180px;
+      max-height: min(520px, calc(100vh - 260px));
+      margin: 0 auto;
+      padding: 4px 8px 8px 4px;
+      overflow-y: auto;
+      scrollbar-color: rgba(216, 154, 69, 0.34) transparent;
+      scrollbar-width: thin;
+    }
+
+    .sample-wall-grid::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .sample-wall-grid::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .sample-wall-grid::-webkit-scrollbar-thumb {
+      border-radius: 999px;
+      background: rgba(216, 154, 69, 0.24);
+    }
+
+    .sample-wall-grid::-webkit-scrollbar-thumb:hover {
+      background: rgba(216, 154, 69, 0.38);
+    }
+
+    .sample-wall-grid.count-1 {
+      grid-template-columns: minmax(420px, 620px);
+    }
+
+    .sample-wall-grid.count-2 {
+      grid-template-columns: repeat(2, minmax(360px, 1fr));
+    }
+
+    .sample-wall-grid.count-3,
+    .sample-wall-grid.count-4,
+    .sample-wall-grid.count-5,
+    .sample-wall-grid.count-6 {
+      grid-template-columns: repeat(2, minmax(360px, 1fr));
+    }
+
+    .sample-wall-panel.has-selection .sample-wall-grid {
+      grid-template-columns: minmax(0, 1fr);
+      max-width: 560px;
+      max-height: min(520px, calc(100vh - 250px));
+      margin-left: 0;
+    }
+
+    .sample-entry-card {
+      position: relative;
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      align-items: center;
+      gap: 22px;
+      min-height: 170px;
+      padding: 22px 54px 22px 22px;
+      border: 1px solid rgba(216, 154, 69, 0.18);
+      border-radius: 28px;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 15%, rgba(255, 232, 169, 0.32), transparent 34%),
+        rgba(255, 255, 255, 0.88);
+      box-shadow: 0 18px 48px rgba(52, 43, 32, 0.08);
+      text-align: left;
+      transition: transform 200ms var(--ease), border-color 200ms ease, box-shadow 200ms ease, background 200ms ease;
+    }
+
+    .sample-entry-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(216, 154, 69, 0.38);
+      background:
+        radial-gradient(circle at 18% 15%, rgba(255, 226, 148, 0.4), transparent 36%),
+        #ffffff;
+      box-shadow: 0 24px 58px rgba(52, 43, 32, 0.12);
+    }
+
+    .sample-entry-card.is-selected {
+      border-color: rgba(216, 154, 69, 0.56);
+      background:
+        radial-gradient(circle at 18% 15%, rgba(255, 220, 128, 0.42), transparent 36%),
+        rgba(255, 245, 218, 0.9);
+      box-shadow: 0 24px 62px rgba(216, 154, 69, 0.16);
+    }
+
+    .sample-entry-body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .sample-entry-avatar {
+      flex: 0 0 auto;
+      width: 112px;
+      height: 112px;
+      border: 5px solid rgba(255, 255, 255, 0.92);
+      border-radius: 50%;
+      object-fit: cover;
+      background: #ffffff;
+      filter: saturate(0.94) contrast(0.98) drop-shadow(0 16px 24px rgba(52, 43, 32, 0.14));
+    }
+
+    .sample-entry-name {
+      display: block;
+      min-width: 0;
+      color: var(--text);
+      font-size: 25px;
+      line-height: 1.25;
+      font-weight: 900;
+      overflow-wrap: anywhere;
+    }
+
+    .sample-entry-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 2px;
+      min-width: 0;
+      color: #5f554b;
+      font-size: 15px;
+      line-height: 1.58;
+    }
+
+    .sample-entry-label {
+      flex: 0 0 auto;
+      color: #9a6f36;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .sample-entry-text {
+      min-width: 0;
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .sample-entry-status {
+      color: #766858;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .sample-entry-arrow {
+      position: absolute;
+      top: 50%;
+      right: 22px;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      color: rgba(125, 93, 45, 0.62);
+      font-size: 30px;
+      line-height: 25px;
+      text-align: center;
+      transform: translateY(-50%);
+      transition: transform 200ms var(--ease), color 200ms ease, background 200ms ease;
+    }
+
+    .sample-entry-card:hover .sample-entry-arrow,
+    .sample-entry-card.is-selected .sample-entry-arrow {
+      color: #8d6229;
+      background: rgba(255, 226, 158, 0.42);
+      transform: translate(3px, -50%);
+    }
+
+    .sample-wall-panel.has-selection .sample-entry-card {
+      grid-template-columns: 88px minmax(0, 1fr);
+      min-height: 138px;
+      padding: 18px 48px 18px 18px;
+      gap: 18px;
+    }
+
+    .sample-wall-panel.has-selection .sample-entry-avatar {
+      width: 88px;
+      height: 88px;
+    }
+
+    .sample-wall-panel.has-selection .sample-entry-name {
+      font-size: 21px;
+    }
+
+    .sample-wall-panel.has-selection .sample-entry-line {
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .sample-wall-panel.has-selection .sample-entry-label,
+    .sample-wall-panel.has-selection .sample-entry-status {
+      font-size: 13px;
+    }
+
+    .sample-wall-empty {
+      width: min(420px, 100%);
+      margin: auto;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    .sample-wall-panel.is-reading,
+    .sample-wall-panel.is-asking {
+      height: clamp(620px, calc(100vh - 120px), 700px);
+    }
+
+    .sample-wall-panel.is-reading .sample-wall,
+    .sample-wall-panel.is-asking .sample-wall {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @media (max-width: 980px) {
+      .sample-wall-panel,
+      .sample-wall-panel.has-selection,
+      .sample-wall-panel.is-reading,
+      .sample-wall-panel.is-asking {
+        height: auto;
+        min-height: 560px;
+        overflow: visible;
+      }
+
+      .sample-wall-panel.has-selection .sample-wall {
+        width: 100%;
+        min-height: auto;
+        padding-bottom: 24px;
+      }
+
+      .sample-wall-panel.has-selection .sample-wall-grid,
+      .sample-wall-grid.count-5,
+      .sample-wall-grid.count-6 {
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+        max-width: 720px;
+        max-height: 430px;
+      }
+
+      .sample-entry-card {
+        grid-template-columns: 92px minmax(0, 1fr);
+        min-height: 148px;
+        padding: 18px 46px 18px 18px;
+        gap: 18px;
+      }
+
+      .sample-entry-avatar {
+        width: 92px;
+        height: 92px;
+      }
+
+      .sample-entry-name {
+        font-size: 22px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .sample-wall-panel {
+        padding: 20px;
+      }
+
+      .sample-wall-grid,
+      .sample-wall-grid.count-1,
+      .sample-wall-grid.count-2,
+      .sample-wall-grid.count-3,
+      .sample-wall-grid.count-4,
+      .sample-wall-grid.count-5,
+      .sample-wall-grid.count-6,
+      .sample-wall-panel.has-selection .sample-wall-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .sample-entry-card,
+      .sample-wall-panel.has-selection .sample-entry-card {
+        grid-template-columns: 76px minmax(0, 1fr);
+        min-height: 132px;
+        padding: 16px 40px 16px 16px;
+        gap: 14px;
+        border-radius: 24px;
+      }
+
+      .sample-entry-avatar,
+      .sample-wall-panel.has-selection .sample-entry-avatar {
+        width: 76px;
+        height: 76px;
+        border-width: 4px;
+      }
+
+      .sample-entry-name,
+      .sample-wall-panel.has-selection .sample-entry-name {
+        font-size: 20px;
+      }
+
+      .sample-entry-line,
+      .sample-wall-panel.has-selection .sample-entry-line,
+      .sample-entry-status,
+      .sample-wall-panel.has-selection .sample-entry-status,
+      .sample-entry-label,
+      .sample-wall-panel.has-selection .sample-entry-label {
+        font-size: 13px;
+      }
+
+      .sample-entry-arrow {
+        right: 14px;
+      }
+    }
+
     .person-card-shell {
       position: absolute;
       z-index: 16;
@@ -1408,15 +1929,41 @@
       top: 28px;
       bottom: 28px;
       width: 470px;
+      max-height: calc(100% - 56px);
+      overflow: hidden;
       transition: left 460ms var(--ease), right 460ms var(--ease), width 460ms var(--ease), transform 460ms var(--ease);
       animation: cardIn 420ms var(--ease) both;
     }
 
     .sample-stage.is-reading .person-card-shell,
-    .sample-stage.is-asking .person-card-shell {
+    .sample-stage.is-asking .person-card-shell,
+    .sample-wall-panel.is-reading .person-card-shell,
+    .sample-wall-panel.is-asking .person-card-shell {
       left: 28px;
       right: auto;
       width: 382px;
+    }
+
+    .sample-wall-panel .person-card-shell {
+      top: 30px;
+      right: 30px;
+      bottom: 30px;
+      max-height: calc(100% - 60px);
+    }
+
+    @media (max-width: 980px) {
+      .sample-wall-panel .person-card-shell,
+      .sample-wall-panel.is-reading .person-card-shell,
+      .sample-wall-panel.is-asking .person-card-shell {
+        position: relative;
+        top: auto;
+        right: auto;
+        bottom: auto;
+        left: auto;
+        width: 100%;
+        max-height: 560px;
+        margin-top: 20px;
+      }
     }
 
     .person-card {
@@ -1425,6 +1972,7 @@
       flex-direction: column;
       width: 100%;
       height: 100%;
+      min-height: 0;
       padding: 0;
       border: 1px solid var(--line);
       border-radius: 24px;
@@ -1570,8 +2118,55 @@
       background: transparent;
     }
 
+    .source-section {
+      display: grid;
+      gap: 10px;
+    }
+
+    .source-section h3 {
+      margin-bottom: 0;
+    }
+
+    .source-row {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+    }
+
+    .source-title {
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .source-excerpt {
+      margin: 0;
+      padding: 13px 14px;
+      border: 1px solid rgba(42, 36, 28, 0.08);
+      border-radius: 14px;
+      color: #5f554a;
+      background: rgba(255, 252, 245, 0.78);
+    }
+
+    .source-original-link {
+      width: fit-content;
+      color: #8a6a2f;
+      font-size: 14px;
+      font-weight: 900;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(216, 154, 69, 0.62);
+      transition: color 180ms ease, border-color 180ms ease;
+    }
+
+    .source-original-link:hover {
+      color: var(--accent-warm);
+      border-bottom-color: rgba(216, 154, 69, 0.86);
+    }
+
     .card-actions {
       display: flex;
+      flex: 0 0 auto;
       gap: 10px;
       margin-top: auto;
       padding: 16px 26px 20px;
@@ -1602,7 +2197,8 @@
       transition: opacity 360ms var(--ease), transform 460ms var(--ease);
     }
 
-    .sample-stage.is-reading .inline-reader-shell {
+    .sample-stage.is-reading .inline-reader-shell,
+    .sample-wall-panel.is-reading .inline-reader-shell {
       opacity: 1;
       pointer-events: auto;
       transform: translateX(0);
@@ -1621,10 +2217,18 @@
       transition: opacity 360ms var(--ease), transform 460ms var(--ease);
     }
 
-    .sample-stage.is-asking .inline-ask-shell {
+    .sample-stage.is-asking .inline-ask-shell,
+    .sample-wall-panel.is-asking .inline-ask-shell {
       opacity: 1;
       pointer-events: auto;
       transform: translateX(0);
+    }
+
+    @media (max-width: 980px) {
+      .sample-wall-panel .inline-reader-shell,
+      .sample-wall-panel .inline-ask-shell {
+        left: 30px;
+      }
     }
 
     .inline-reader {
@@ -2091,17 +2695,6 @@
       margin-top: 24px;
     }
 
-    .person-name-link {
-      color: var(--text);
-      font-weight: 900;
-      text-decoration: none;
-      border-bottom: 1px solid rgba(216, 154, 69, 0.42);
-    }
-
-    .person-name-link:hover {
-      color: var(--warm);
-    }
-
     .mini-peep-card {
       display: grid;
       place-items: center;
@@ -2499,17 +3092,27 @@
       return peepSrc(src);
     }
 
+    function avatarFallbackSrc(index = 0) {
+      return peepSrc(crowdPeepIds[index % crowdPeepIds.length]);
+    }
+
+    function avatarImg(value, index = 0, className = "", alt = "") {
+      const classAttr = className ? ` class="${escapeHtml(className)}"` : "";
+      return `<img${classAttr} src="${escapeHtml(avatarSrc(value, index))}" alt="${escapeHtml(alt)}" onerror="this.onerror=null;this.src='${escapeHtml(avatarFallbackSrc(index))}'">`;
+    }
+
     const API_CONFIG = {
       apiBase: API_BASE,
       loginUrl: AUTH_LOGIN_URL,
       meEndpoint: "/auth/me",
       searchEndpoint: "/api/search",
       demoSearchEndpoint: "/api/demo/search",
+      clarifyEndpoint: "/api/query/clarify",
       saveEndpoint: "/api/samples/save",
       savedEndpoint: "/api/samples/saved",
       chatEndpoint: "/api/personas/chat",
-      requestTimeoutMs: 12000,
-      useMockFallback: true,
+      requestTimeoutMs: 45000,
+      useMockFallback: false,
       useMockUserFallback: true
     };
 
@@ -2866,8 +3469,9 @@
       }
     );
 
-    let paths = mockPaths.map(normalizePath);
-    let people = mockPeople.map((item, index) => normalizePerson(item, index));
+    const initialMockMode = Boolean(window.LIFE_PATH_FORCE_MOCK || API_CONFIG.useMockFallback);
+    let paths = initialMockMode ? mockPaths.map(normalizePath) : [];
+    let people = initialMockMode ? mockPeople.map((item, index) => normalizePerson(item, index)) : [];
 
     const state = {
       page: "home",
@@ -2878,18 +3482,27 @@
       sessionChecked: false,
       user: null,
       loadingStep: 0,
-      selectedPathId: "trial",
+      selectedPathId: initialMockMode ? "trial" : "",
       selectedPersonId: "",
       pathExpanded: false,
       readerOpen: false,
       readerArticleIndex: 0,
       queryId: null,
       analysisSteps: defaultAnalysisSteps("不工作之后，我想去新西兰生活"),
+      loadingSteps: [],
       focusTags: ["身份周期", "现金流", "工作边界", "回流代价"],
       backendStatus: "idle",
+      searchError: "",
+      searchRequestId: 0,
       savedQuestionGroups: [],
       hasSubmittedQuestion: false,
       submittedQuestion: "",
+      needClarification: false,
+      clarificationQuestion: "",
+      clarificationOptions: [],
+      clarificationAnswer: "",
+      clarificationShown: false,
+      isCheckingClarification: false,
       questionText: defaultQuestionText(),
       messages: [],
       aiTyping: false,
@@ -2937,6 +3550,15 @@
         { title: "识别核心变量", text: "暂停工作、现金流、身份周期、长期居住意愿" },
         { title: "生成待确认问题", text: "是短暂停靠、长期迁移，还是想重建工作边界？" },
         { title: "匹配公开经历", text: "正在从真实分享里寻找走过相似道路的人..." }
+      ];
+    }
+
+    function defaultLoadingSteps(question) {
+      return [
+        { label: "读取问题", value: question },
+        { label: "识别关键处境", value: "正在从你的描述里提取线索" },
+        { label: "生成搜索线索", value: "围绕这个问题查找真实经历" },
+        { label: "匹配公开经历", value: "正在从知乎真实内容中筛选" }
       ];
     }
 
@@ -3019,23 +3641,72 @@
       const pathName = item.pathName || item.path_name || item.path?.name;
       const matchedPath = pathName ? paths.find((path) => path.name === pathName) : null;
       const pathId = item.pathId || item.path_id || item.routeId || item.route_id || item.path?.id || matchedPath?.id || fallbackPathId || paths[0]?.id || "";
+      const source = item.source || {};
+      const sourceAuthor = source.author || {};
+      const internal = item.internal || {};
+      const sourceTitle = textOf(item.sourceTitle || item.source_title || source.title || item.articleTitle || item.title || "");
+      const sourceUrl = textOf(item.sourceUrl || item.source_url || source.url || item.url || "");
+      const sourceExcerpt = textOf(item.sourceExcerpt || item.source_excerpt || item.rawContentPreview || item.raw_content_preview || source.excerpt || item.excerpt || item.keyExperience || item.key_experience || "");
+      const situation = textOf(item.situation || item.who || item.bio || item.intro || item.profile || item.description || item.authorSummary || "");
+      const actionSummary = textOf(item.actionSummary || item.action_summary || item.oneLine || item.one_line || item.summary || item.cardSummary || item.card_summary || item.badge || "");
+      const realDetails = toArray(item.realDetails || item.real_details || item.key_fragments || item.keyFragments).map((detail) => textOf(detail)).filter(Boolean).slice(0, 5);
+      const currentStatus = textOf(item.currentStatus || item.current_status || "");
+      const entrySituation = textOf(item.entrySituation || item.entry_situation || situation);
+      const entryStatus = textOf(item.entryStatus || item.entry_status || currentStatus);
+      const matchReasons = toArray(item.matchReasons || item.match_reasons || internal.matchReasons || internal.match_reasons || item.overlaps || item.similarities || item.reasons);
+      const normalizedSource = {
+        ...source,
+        title: textOf(source.title || sourceTitle),
+        url: textOf(source.url || sourceUrl),
+        excerpt: textOf(source.excerpt || sourceExcerpt),
+        type: textOf(source.type || source.content_type || source.contentType || ""),
+        content_type: textOf(source.content_type || source.contentType || source.type || ""),
+        authorName: textOf(source.authorName || source.author_name || sourceAuthor.name || item.name || ""),
+        author_name: textOf(source.author_name || source.authorName || sourceAuthor.name || item.name || ""),
+        author_avatar: textOf(source.author_avatar || source.authorAvatar || sourceAuthor.avatar || ""),
+        updatedAt: textOf(source.updatedAt || source.updated_at || "")
+      };
       const normalized = {
         id: textOf(item.id || item.personId || item.person_id || item.authorId || item.author_id || slugify(name, `person_${index + 1}`)),
         name: textOf(name),
         pathId: textOf(pathId),
+        sampleType: textOf(item.sampleType || item.sample_type || item.contentType || ""),
+        sample_type: textOf(item.sample_type || item.sampleType || item.contentType || ""),
         role: textOf(item.role || item.identity || item.bioTitle || item.bio_title || item.occupation || "知乎用户"),
-        badge: textOf(item.badge || item.tagline || item.keyExperience || item.key_experience || item.subtitle || item.oneLine || item.summary || ""),
+        badge: textOf(item.badge || item.tagline || item.keyExperience || item.key_experience || item.subtitle || actionSummary || item.summary || ""),
         gender: textOf(item.gender || item.sex || item.demographic?.gender || "未知"),
-        avatar: textOf(item.avatar || item.avatarUrl || item.avatar_url || item.image || item.imageUrl || crowdPeepIds[index % crowdPeepIds.length]),
-        oneLine: textOf(item.oneLine || item.one_line || item.summary || item.cardSummary || item.card_summary || item.badge || ""),
-        who: textOf(item.who || item.bio || item.intro || item.profile || item.description || item.authorSummary || ""),
-        overlaps: toArray(item.overlaps || item.matchReasons || item.match_reasons || item.similarities || item.reasons),
+        avatar: textOf(item.avatar || item.avatarUrl || item.avatar_url || item.image || item.imageUrl || source.author_avatar || sourceAuthor.avatar || crowdPeepIds[index % crowdPeepIds.length]),
+        situation,
+        actionSummary,
+        realDetails,
+        currentStatus,
+        entrySituation,
+        entryStatus,
+        internal,
+        oneLine: actionSummary,
+        who: situation,
+        overlaps: matchReasons,
+        matchReasons,
         timeline: normalizeTimeline(item.timeline || item.events),
+        sourceTitle,
+        sourceUrl,
+        sourceExcerpt,
+        source: normalizedSource,
         lesson: textOf(item.lesson || item.takeaway || item.keyLesson || item.key_lesson || item.conclusion || ""),
         articles: [],
         raw: item
       };
       normalized.articles = toArray(item.articles || item.posts || item.contents || item.sources).map((article, articleIndex) => normalizeArticle(article, articleIndex, { ...item, ...normalized }));
+      if (!normalized.articles.length && (sourceTitle || sourceUrl || sourceExcerpt)) {
+        normalized.articles = [normalizeArticle({
+          title: sourceTitle || `${normalized.name} 的知乎原文`,
+          author: normalized.source.author_name || normalized.name,
+          sourceName: normalized.source.content_type ? `知乎${normalized.source.content_type}` : "知乎内容",
+          sourceUrl,
+          summary: sourceExcerpt,
+          body: sourceExcerpt ? [sourceExcerpt] : []
+        }, 0, normalized)];
+      }
       if (!normalized.articles.length && (item.articleBody || item.content || item.text)) {
         normalized.articles = [normalizeArticle({
           title: item.articleTitle || item.title || `${normalized.name} 的公开分享`,
@@ -3099,6 +3770,21 @@
       return steps.length ? steps : defaultAnalysisSteps(query);
     }
 
+    function normalizeLoadingSteps(value) {
+      return toArray(value).map((step) => {
+        if (Array.isArray(step)) return { label: textOf(step[0]), value: textOf(step[1]) };
+        if (typeof step === "string") return { label: "", value: step };
+        return {
+          label: textOf(step.label || step.title || step.name),
+          value: textOf(step.value || step.text || step.content || step.desc || step.description)
+        };
+      }).filter((step) => step.label || step.value).slice(0, 4);
+    }
+
+    function getLoadingSteps() {
+      return state.loadingSteps.length ? state.loadingSteps : defaultLoadingSteps(state.question);
+    }
+
     function normalizeSearchResponse(payload, query) {
       const body = getResponseBody(payload) || {};
       let nextPaths = toArray(body.paths || body.routes || body.directions || body.pathways).map(normalizePath);
@@ -3109,50 +3795,45 @@
         toArray(path.people || path.samples || path.personas || path.authors).forEach((person) => nestedPeople.push({ person, pathId: normalizedPath.id }));
       });
 
-      if (!nextPaths.length && searchItems.length) {
-        nextPaths = mockPaths.map((path) => normalizePath(path));
-      }
-
       const previousPaths = paths;
       if (nextPaths.length) paths = nextPaths;
       let nextPeople = [
         ...toArray(body.people || body.samples || body.personas || body.authors).map((person, index) => normalizePerson(person, index)),
         ...nestedPeople.map(({ person, pathId }, index) => normalizePerson(person, index, pathId)),
-        ...searchItems.map((item, index) => normalizeSearchItemAsPerson(item, index, nextPaths[index % Math.max(nextPaths.length, 1)]?.id || mockPaths[index % mockPaths.length]?.id || "search"))
+        ...searchItems.map((item, index) => normalizeSearchItemAsPerson(item, index, nextPaths[index % Math.max(nextPaths.length, 1)]?.id || ""))
       ];
       paths = previousPaths;
-
-      if (!nextPaths.length && nextPeople.length) {
-        const seen = new Map();
-        nextPeople.forEach((person) => {
-          if (!seen.has(person.pathId)) seen.set(person.pathId, { id: person.pathId, name: person.raw?.pathName || person.raw?.path?.name || person.pathId, count: 0, desc: "", short: "" });
-          seen.get(person.pathId).count += 1;
-        });
-        nextPaths = Array.from(seen.values()).map(normalizePath);
-      }
-
-      if (!nextPaths.length || !nextPeople.length) {
-        if (!API_CONFIG.useMockFallback) throw new Error("后端返回缺少 paths 或 people");
-        return normalizeSearchResponse({
-          queryId: "mock_query",
-          analysis: { steps: defaultAnalysisSteps(query), focusTags: state.focusTags },
-          paths: mockPaths,
-          people: mockPeople
-        }, query);
-      }
 
       return {
         queryId: textOf(body.queryId || body.query_id || body.id || ""),
         query: textOf(body.query || body.question || query),
+        loadingSteps: normalizeLoadingSteps(body.loadingSteps || body.loading_steps),
         analysisSteps: normalizeAnalysisSteps(body.analysis || body, query),
         focusTags: toArray(body.analysis?.focusTags || body.analysis?.focus_tags || body.focusTags || body.focus_tags || body.tags).map(String),
-        paths: sortPathsByCount(nextPaths),
+        paths: nextPeople.length ? sortPathsByCount(nextPaths) : [],
         people: nextPeople
       };
     }
 
     function sortPathsByCount(list) {
       return [...list].sort((a, b) => numberOf(b.count, 0) - numberOf(a.count, 0));
+    }
+
+    function getResultModeFor(resultPaths = paths, resultPeople = people) {
+      if (!resultPeople.length) return "empty";
+      if (resultPaths.length >= 2) return "multi_path";
+      if (resultPaths.length === 1 && resultPeople.length === 1) return "single_person";
+      if (resultPaths.length === 1 && resultPeople.length > 1) return "single_path";
+      if (resultPeople.length === 1) return "people_only_single";
+      return "people_only";
+    }
+
+    function isDirectPeopleResult(mode = getResultModeFor()) {
+      return ["single_path", "single_person", "people_only", "people_only_single"].includes(mode);
+    }
+
+    function isSampleWallActive() {
+      return state.page === "samples" || (state.page === "paths" && (state.pathExpanded || isDirectPeopleResult()));
     }
 
     function apiUrl(path) {
@@ -3167,6 +3848,25 @@
         paths: mockPaths,
         people: mockPeople
       };
+    }
+
+    function shouldUseMockSearch() {
+      return Boolean(window.LIFE_PATH_FORCE_MOCK || API_CONFIG.useMockFallback);
+    }
+
+    function resetSearchResults() {
+      paths = [];
+      people = [];
+      state.queryId = null;
+      state.selectedPathId = "";
+      state.selectedPersonId = "";
+      state.pathExpanded = false;
+      state.readerOpen = false;
+      state.readerArticleIndex = 0;
+      state.askPanelOpen = false;
+      state.messages = [];
+      state.aiTyping = false;
+      state.searchError = "";
     }
 
     async function postJson(path, payload) {
@@ -3206,6 +3906,10 @@
       } finally {
         clearTimeout(timer);
       }
+    }
+
+    async function requestClarification(query, clarification = "") {
+      return await postJson(API_CONFIG.clarifyEndpoint, { query, clarification });
     }
 
     function normalizeZhihuUser(payload) {
@@ -3262,11 +3966,15 @@
     function applySearchData(data, query) {
       paths = sortPathsByCount(data.paths);
       people = data.people;
+      const resultMode = getResultModeFor(paths, people);
+      const onlyPath = paths.length === 1 ? paths[0] : null;
+      const onlyPerson = people.length === 1 ? people[0] : null;
       state.queryId = data.queryId || null;
+      state.loadingSteps = data.loadingSteps.length ? data.loadingSteps : state.loadingSteps;
       state.analysisSteps = data.analysisSteps.length ? data.analysisSteps : defaultAnalysisSteps(query);
       state.focusTags = data.focusTags.length ? data.focusTags : ["身份周期", "现金流", "工作边界", "回流代价"];
-      state.selectedPathId = paths[0]?.id || "";
-      state.selectedPersonId = "";
+      state.selectedPathId = onlyPath?.id || "";
+      state.selectedPersonId = resultMode === "single_person" || resultMode === "people_only_single" ? onlyPerson?.id || "" : "";
       state.pathExpanded = false;
       state.readerOpen = false;
       state.readerArticleIndex = 0;
@@ -3291,7 +3999,7 @@
     }
 
     function getProfileUrl(person) {
-      return person.raw?.profileUrl || person.raw?.profile_url || person.raw?.zhihuUrl || person.raw?.zhihu_url || person.raw?.homepage || person.raw?.url || `https://www.zhihu.com/people/${encodeURIComponent(person.id || person.name)}`;
+      return textOf(person.sourceUrl || person.source?.url || "");
     }
 
     function getPersonaReply(person) {
@@ -3461,6 +4169,25 @@
       `;
     }
 
+    function renderClarificationCard() {
+      return `
+        <div class="clarification-card">
+          <p class="clarification-kicker">为了找到更接近的真实经历，想再确认一句：</p>
+          <h3>${escapeHtml(state.clarificationQuestion || "你更想看哪类真实经历？")}</h3>
+          <div class="clarification-options">
+            ${state.clarificationOptions.map((option) => `
+              <button class="clarification-option" type="button" data-action="submit-clarification" data-answer="${escapeHtml(option)}">
+                ${escapeHtml(option)}
+              </button>
+            `).join("")}
+          </div>
+          <button class="clarification-skip" type="button" data-action="skip-clarification">
+            跳过，先帮我找找看
+          </button>
+        </div>
+      `;
+    }
+
     function renderHome() {
       const prompt = queryPrompts[state.promptIndex % queryPrompts.length];
       return `
@@ -3473,13 +4200,15 @@
               <div class="query-placeholder" id="queryPlaceholder">${escapeHtml(prompt)}</div>
               <button class="send-query" type="button" data-action="start" aria-label="发送当前问题">→</button>
             </div>
+            ${state.isCheckingClarification ? `<p class="clarification-checking">正在判断是否需要补充一句...</p>` : ""}
+            ${state.clarificationShown ? renderClarificationCard() : ""}
           </div>
         </section>
       `;
     }
 
     function renderLoading() {
-      const steps = state.analysisSteps.length ? state.analysisSteps : defaultAnalysisSteps(state.question);
+      const steps = getLoadingSteps();
       return `
         <section class="screen loading">
           <div class="loading-panel">
@@ -3490,7 +4219,7 @@
             <div class="fingerprint-steps">
               ${steps.map((step, index) => `
                 <div class="fingerprint-step ${index < state.loadingStep ? "is-done" : index === state.loadingStep ? "is-active" : ""}">
-                  <strong>${step.title}：</strong>${step.text}
+                  <strong>${escapeHtml(step.label)}：</strong>${escapeHtml(step.value)}
                 </div>
               `).join("")}
             </div>
@@ -3502,7 +4231,7 @@
 
     async function requestSearchData(query) {
       state.backendStatus = "loading";
-      if (window.LIFE_PATH_FORCE_MOCK && API_CONFIG.useMockFallback) {
+      if (shouldUseMockSearch()) {
         state.backendStatus = "mock";
         return normalizeSearchResponse(mockSearchPayload(query), query);
       }
@@ -3511,19 +4240,90 @@
         if (window.LIFE_PATH_USE_DEMO_SEARCH) {
           payload = await postJson(API_CONFIG.demoSearchEndpoint, { query });
         } else {
-          payload = await getJson(`${API_CONFIG.searchEndpoint}?query=${encodeURIComponent(query)}&count=20`);
+          const params = new URLSearchParams();
+          params.set("query", query);
+          params.set("count", "20");
+          if (state.clarificationAnswer) {
+            params.set("clarification", state.clarificationAnswer);
+          }
+          payload = await getJson(`${API_CONFIG.searchEndpoint}?${params.toString()}`);
         }
         state.backendStatus = "ready";
         return normalizeSearchResponse(payload, query);
       } catch (error) {
-        console.warn("Search API unavailable, using mock fallback.", error);
-        state.backendStatus = "mock";
-        if (!API_CONFIG.useMockFallback) throw error;
-        return normalizeSearchResponse(mockSearchPayload(query), query);
+        console.warn("Search API unavailable.", error);
+        state.backendStatus = "error";
+        throw error;
       }
     }
 
+    async function handleStartQuery() {
+      const input = document.getElementById("questionInput");
+      const activePrompt = input?.dataset.prompt || queryPrompts[state.promptIndex % queryPrompts.length];
+
+      state.question = input ? input.value.trim() || activePrompt : activePrompt;
+      state.homeInputTouched = false;
+
+      state.needClarification = false;
+      state.clarificationQuestion = "";
+      state.clarificationOptions = [];
+      state.clarificationAnswer = "";
+      state.loadingSteps = [];
+      state.clarificationShown = false;
+      state.isCheckingClarification = true;
+      render();
+
+      try {
+        const result = await requestClarification(state.question);
+        const body = getResponseBody(result) || result || {};
+
+        state.isCheckingClarification = false;
+        state.loadingSteps = normalizeLoadingSteps(body.loadingSteps || body.loading_steps);
+
+        if (body && body.needClarification) {
+          state.needClarification = true;
+          state.clarificationQuestion = body.clarificationQuestion || "";
+          state.clarificationOptions = Array.isArray(body.clarificationOptions)
+            ? body.clarificationOptions
+            : [];
+          state.clarificationShown = true;
+          render();
+          return;
+        }
+
+        startLoading();
+      } catch (error) {
+        console.warn("Clarification API unavailable, continue search directly.", error);
+        state.isCheckingClarification = false;
+        startLoading();
+      }
+    }
+
+    async function submitClarification(answer) {
+      state.clarificationAnswer = answer || "";
+      state.loadingSteps = [];
+      state.clarificationShown = false;
+      try {
+        const result = await requestClarification(state.question, state.clarificationAnswer);
+        const body = getResponseBody(result) || result || {};
+        state.loadingSteps = normalizeLoadingSteps(body.loadingSteps || body.loading_steps);
+      } catch (error) {
+        console.warn("Clarification loadingSteps unavailable, continue search directly.", error);
+      }
+      startLoading();
+    }
+
+    function skipClarification() {
+      state.clarificationAnswer = "";
+      state.loadingSteps = [];
+      state.clarificationShown = false;
+      startLoading();
+    }
+
     async function startLoading() {
+      const requestId = state.searchRequestId + 1;
+      state.searchRequestId = requestId;
+      resetSearchResults();
       state.loadingStep = 0;
       state.hasSubmittedQuestion = true;
       state.submittedQuestion = state.question;
@@ -3531,7 +4331,13 @@
       state.focusTags = ["身份周期", "现金流", "工作边界", "回流代价"];
       setPage("loading");
       clearLoadingTimers();
-      const searchPromise = requestSearchData(state.question);
+      const searchPromise = requestSearchData(state.question).then((searchData) => {
+        if (searchData.loadingSteps.length) {
+          state.loadingSteps = searchData.loadingSteps;
+          if (state.page === "loading") render();
+        }
+        return searchData;
+      });
       const minimumLoading = new Promise((resolve) => setTimeout(resolve, 4300));
       [1, 2, 3, 4].forEach((step, index) => {
         loadingTimers.push(setTimeout(() => {
@@ -3539,10 +4345,21 @@
           if (state.page === "loading") updateLoadingSteps();
         }, 850 * (index + 1)));
       });
-      const [searchData] = await Promise.all([searchPromise, minimumLoading]);
-      clearLoadingTimers();
-      applySearchData(searchData, state.question);
-      setPage("paths");
+      try {
+        const [searchData] = await Promise.all([searchPromise, minimumLoading]);
+        if (requestId !== state.searchRequestId) return;
+        clearLoadingTimers();
+        applySearchData(searchData, state.question);
+        setPage("paths");
+      } catch (error) {
+        if (requestId !== state.searchRequestId) return;
+        console.warn("Search request failed.", error);
+        clearLoadingTimers();
+        resetSearchResults();
+        state.backendStatus = "error";
+        state.searchError = "这次没有成功连上真实结果，可以稍后重试。";
+        setPage("paths");
+      }
     }
 
     function updateLoadingSteps() {
@@ -3554,13 +4371,19 @@
 
     function renderPaths() {
       const sortedPaths = sortPathsByCount(paths);
+      const resultMode = getResultModeFor(sortedPaths, people);
+      if (state.backendStatus === "error") return renderSearchErrorResults();
+      if (resultMode === "empty") return renderLowRecallResults();
+      if (isDirectPeopleResult(resultMode)) return renderDirectPeopleResult(resultMode, sortedPaths[0] || null);
+
       const selectedPath = getPath();
+      const pathCountClass = `paths-count-${Math.min(Math.max(sortedPaths.length, 1), 5)}`;
       return `
         <section class="screen paths-screen ${state.pathExpanded ? "has-expanded" : "is-overview"}">
           <div class="paths-copy">
             <h1>关于「${escapeHtml(state.question)}」，TA 们是这样做的...</h1>
           </div>
-          <div class="path-showcase" aria-label="前人路径">
+          <div class="path-showcase ${pathCountClass} ${sortedPaths.length <= 3 ? "compact-paths" : ""}" aria-label="前人路径">
             ${renderPathCards(sortedPaths)}
           </div>
           ${state.pathExpanded ? `
@@ -3581,6 +4404,65 @@
       `;
     }
 
+    function renderDirectPeopleResult(resultMode, onlyPath) {
+      const copy = directPeopleResultCopy(resultMode, onlyPath);
+      return `
+        <section class="screen samples-screen direct-results-screen">
+          <div class="samples-header direct-results-header">
+            <div>
+              <h1>${escapeHtml(copy.title)}</h1>
+              <p>${escapeHtml(copy.subtitle)}</p>
+            </div>
+          </div>
+          ${renderSampleStage()}
+          ${renderCommunityExit()}
+        </section>
+      `;
+    }
+
+    function directPeopleResultCopy(resultMode, onlyPath) {
+      if (resultMode === "single_path") {
+        return {
+          title: `${onlyPath?.name || "相近真实经历"}的人`,
+          subtitle: onlyPath?.desc || "这些公开经历和你的问题有一定相关性。"
+        };
+      }
+      if (resultMode === "single_person") {
+        return {
+          title: "我们先找到一位经历相近的人",
+          subtitle: ""
+        };
+      }
+      return {
+        title: people.length === 1 ? "我们先找到一位相关经历" : "我们先找到几位相关经历",
+        subtitle: "这些公开经历和你的问题有一定相关性。"
+      };
+    }
+
+    function renderLowRecallResults() {
+      return `
+        <section class="screen paths-screen low-recall-screen">
+          <div class="paths-copy low-recall-copy">
+            <h1>这次没有找到足够可信的公开经历</h1>
+            <p class="lead">可以换一种更具体的说法，或补充你的处境后再试一次。</p>
+          </div>
+        </section>
+      `;
+    }
+
+    function renderSearchErrorResults() {
+      const message = state.searchError || "这次没有成功连上真实结果，可以稍后重试。";
+      return `
+        <section class="screen paths-screen low-recall-screen">
+          <div class="paths-copy low-recall-copy">
+            <h1>${escapeHtml(message)}</h1>
+            <p class="lead">可以重新搜索当前问题，或稍后再试一次。</p>
+            <button class="primary" type="button" data-action="retry-search">重新搜索</button>
+          </div>
+        </section>
+      `;
+    }
+
     function renderPathCards(sortedPaths) {
       return sortedPaths.map((path, index) => `
         <button class="path-card ${state.pathExpanded && path.id === state.selectedPathId ? "is-current" : ""}" data-action="choose-path" data-id="${path.id}" type="button">
@@ -3591,7 +4473,7 @@
           <span class="path-count">${path.count} 人走过</span>
           <p class="path-desc">${escapeHtml(path.desc)}</p>
           <span class="path-card-peeps" aria-hidden="true">
-            ${pathPeople(path.id, 4).map((person) => `<img src="${avatarSrc(person.avatar)}" alt="">`).join("")}
+            ${pathPeople(path.id, 4).map((person, peepIndex) => avatarImg(person.avatar, peepIndex, "", person.name)).join("")}
           </span>
         </button>
       `).join("");
@@ -3608,7 +4490,7 @@
     function renderSamplePerson(person, duplicateIndex = 0) {
       return `
         <button class="sample-person ${person.id === state.selectedPersonId ? "is-selected" : ""}" type="button" data-action="select-person" data-id="${person.id}" data-gender="${person.gender}" style="animation-delay:${duplicateIndex * -0.22}s">
-          <img class="peep-img" src="${avatarSrc(person.avatar, duplicateIndex)}" alt="">
+          ${avatarImg(person.avatar, duplicateIndex, "peep-img", person.name)}
           <span class="caption"><strong>Hi，我是${person.name}</strong>${person.badge}</span>
         </button>
       `;
@@ -3649,49 +4531,127 @@
       return selectedPerson ? visible.filter((person) => person.id !== selectedPerson.id) : visible;
     }
 
-    function renderSampleStage() {
-      const selectedPerson = state.selectedPersonId ? getPerson() : null;
-      const railPeople = getRailPeopleForSelectedPath();
-      const detailOpen = state.readerOpen || state.askPanelOpen;
-      const isStaticFew = railPeople.length > 0 && railPeople.length < 5;
-      const trackPeople = isStaticFew ? railPeople : [...railPeople, ...railPeople];
+    function getWallPeopleForSelectedPath() {
+      if (!paths.length) return people.slice(0, 6);
+      const matched = peopleForPath(getPath().id);
+      return (matched.length ? matched : people).slice(0, 6);
+    }
+
+    function getPersonEntrySituation(person) {
+      return textOf(person.entrySituation || person.entry_situation || person.situation || person.who || "");
+    }
+
+    function getPersonEntryStatus(person) {
+      return textOf(person.entryStatus || person.entry_status || person.currentStatus || "");
+    }
+
+    function renderSampleEntryCard(person, index = 0) {
+      const situation = getPersonEntrySituation(person);
+      const status = getPersonEntryStatus(person);
       return `
-        <div class="sample-stage ${selectedPerson ? "has-card" : ""} ${detailOpen ? "is-detail-open" : ""} ${state.readerOpen ? "is-reading" : ""} ${state.askPanelOpen ? "is-asking" : ""} ${isStaticFew ? "has-static-few" : ""}">
-          <div class="sample-rail">
-            <div class="sample-track ${isStaticFew ? "is-static-few" : ""}">
-              ${trackPeople.map((person, index) => renderSamplePerson(person, index)).join("")}
-            </div>
-          </div>
-          ${selectedPerson ? `<div class="person-card-shell" id="personCardShell">${renderPersonCard(selectedPerson)}</div>` : ""}
-          <div class="inline-reader-shell" id="inlineReaderShell">${selectedPerson && state.readerOpen ? renderInlineReader(selectedPerson) : ""}</div>
-          <div class="inline-ask-shell" id="inlineAskShell">${selectedPerson && state.askPanelOpen ? renderInlineAskPanel(selectedPerson) : ""}</div>
-        </div>
+        <button class="sample-entry-card ${person.id === state.selectedPersonId ? "is-selected" : ""}" type="button" data-action="select-person" data-id="${person.id}" aria-label="查看 ${escapeHtml(person.name)} 的经历">
+          ${avatarImg(person.avatar, index, "sample-entry-avatar", person.name)}
+          <span class="sample-entry-body">
+            <strong class="sample-entry-name">${escapeHtml(person.name)}</strong>
+            ${situation ? `
+              <span class="sample-entry-line sample-entry-situation">
+                <span class="sample-entry-label">情况：</span>
+                <span class="sample-entry-text">${escapeHtml(situation)}</span>
+              </span>
+            ` : ""}
+            ${status ? `
+              <span class="sample-entry-line sample-entry-status">
+                <span class="sample-entry-label">现状：</span>
+                <span class="sample-entry-text">${escapeHtml(status)}</span>
+              </span>
+            ` : ""}
+          </span>
+          <span class="sample-entry-arrow" aria-hidden="true">›</span>
+        </button>
       `;
     }
 
+    function renderSampleStage() {
+  const selectedPerson = state.selectedPersonId ? getPerson() : null;
+  const wallPeople = getWallPeopleForSelectedPath();
+  const detailOpen = state.readerOpen || state.askPanelOpen;
+  const countClass = `count-${Math.max(1, Math.min(wallPeople.length, 6))}`;
+  const shouldShowPickHint = wallPeople.length > 1;
+
+  return `
+    <div class="sample-wall-panel ${selectedPerson ? "has-selection" : ""} ${detailOpen ? "is-detail-open" : ""} ${state.readerOpen ? "is-reading" : ""} ${state.askPanelOpen ? "is-asking" : ""}">
+      <div class="sample-wall">
+        ${shouldShowPickHint ? `<p class="sample-wall-kicker">先选一个人，看看 TA 的经历</p>` : ""}
+        ${wallPeople.length ? `
+          <div class="sample-wall-grid ${countClass}">
+            ${wallPeople.map((person, index) => renderSampleEntryCard(person, index)).join("")}
+          </div>
+        ` : `<p class="sample-wall-empty">这条路径下暂时没有可展示的人物样本。</p>`}
+      </div>
+      ${selectedPerson ? `<div class="person-card-shell" id="personCardShell">${renderPersonCard(selectedPerson)}</div>` : ""}
+      <div class="inline-reader-shell" id="inlineReaderShell">${selectedPerson && state.readerOpen ? renderInlineReader(selectedPerson) : ""}</div>
+      <div class="inline-ask-shell" id="inlineAskShell">${selectedPerson && state.askPanelOpen ? renderInlineAskPanel(selectedPerson) : ""}</div>
+    </div>
+  `;
+}
+
+    function getPersonSourceTitle(person) {
+      const article = getPersonArticles(person)[0];
+      return textOf(person.sourceTitle || person.source?.title || article?.title || `${person.name} 的知乎原文`);
+    }
+
+    function getPersonSourceUrl(person) {
+      const article = getPersonArticles(person)[0];
+      return textOf(person.sourceUrl || person.source?.url || article?.sourceUrl || "");
+    }
+
+    function getPersonSourceExcerpt(person) {
+      const article = getPersonArticles(person)[0];
+      return textOf(person.sourceExcerpt || person.source?.excerpt || article?.summary || article?.body?.[0] || person.keyExperience || "");
+    }
+
     function renderPersonCard(person) {
-      const articles = getPersonArticles(person);
+      const sourceTitle = getPersonSourceTitle(person);
+      const sourceUrl = getPersonSourceUrl(person);
+      const situation = textOf(person.situation || person.who || "这位知友分享了与当前问题相近的处境。");
+      const actionSummary = textOf(person.actionSummary || person.oneLine || "原文记录了 TA 在这个处境里的选择和行动。");
+      const realDetails = toArray(person.realDetails).map((item) => textOf(item)).filter(Boolean).slice(0, 5);
+      const currentStatus = textOf(person.currentStatus || "");
+      const hasSourceExperience = Boolean(sourceTitle || sourceUrl);
       return `
         <article class="person-card has-peep">
           <div class="person-card-body">
-            <div class="card-peep" aria-hidden="true"><img src="${avatarSrc(person.avatar)}" alt=""></div>
-            <h2><a class="person-name-link" href="${getProfileUrl(person)}" target="_blank" rel="noreferrer">${person.name}</a></h2>
+            <div class="card-peep" aria-hidden="true">${avatarImg(person.avatar, 0, "", person.name)}</div>
+            <h2>${escapeHtml(person.name)}</h2>
             <div class="section-block">
-              <h3>TA 是谁</h3>
-              <p>${person.who}</p>
+              <h3>TA 的处境</h3>
+              <p>${escapeHtml(situation)}</p>
             </div>
             <div class="section-block">
-              <h3>为什么匹配到 TA</h3>
-              <ul>${person.overlaps.map((item) => `<li>${item}</li>`).join("")}</ul>
+              <h3>TA 做了什么</h3>
+              <p>${escapeHtml(actionSummary)}</p>
             </div>
+            ${realDetails.length ? `
             <div class="section-block">
-              <h3>TA 的经历时间线</h3>
-              <div class="timeline">${person.timeline.map((item) => `<div><b>${item[0]}</b><span>${item[1]}</span></div>`).join("")}</div>
+              <h3>TA 提到的细节</h3>
+              <ul class="detail-list">${realDetails.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
             </div>
+            ` : ""}
+            ${currentStatus ? `
             <div class="section-block">
-              <h3>TA的真实经历</h3>
-              <div class="article-list">${articles.map((article, index) => `<button class="article-link ${state.readerOpen && index === state.readerArticleIndex ? "is-active" : ""}" type="button" data-action="open-reader" data-index="${index}">《${article.title}》</button>`).join("")}</div>
+              <h3>现在走到哪一步</h3>
+              <p>${escapeHtml(currentStatus)}</p>
             </div>
+            ` : ""}
+            ${hasSourceExperience ? `
+            <div class="section-block person-section source-section">
+              <h3>TA 的真实经历</h3>
+              <div class="source-row">
+                ${sourceTitle ? `<span class="source-title">《${escapeHtml(sourceTitle)}》</span>` : ""}
+                ${sourceUrl ? `<a class="source-original-link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener">查看知乎原文 ↗</a>` : ""}
+              </div>
+            </div>
+            ` : ""}
           </div>
           <div class="card-actions">
             <button class="primary" type="button" data-action="ask-person">向 TA 提问</button>
@@ -3709,14 +4669,14 @@
       const articles = getPersonArticles(person);
       const articleIndex = Math.min(state.readerArticleIndex, Math.max(articles.length - 1, 0));
       const article = articles[articleIndex] || normalizeArticle({ title: `${person.name} 的公开分享`, body: person.articleBody }, 0, person);
-      const body = article.body.length ? article.body : toArray(person.articleBody);
-      const sourceUrl = escapeHtml(article.sourceUrl || getProfileUrl(person));
+      const body = article.body.length ? article.body : (article.summary ? [article.summary] : toArray(person.articleBody));
+      const sourceUrl = article.sourceUrl || getPersonSourceUrl(person);
       return `
         <article class="inline-reader">
           <div class="inline-reader-scroll">
-            <h2>${article.title}</h2>
-            <p class="reader-meta"><a class="reader-source-link" href="${sourceUrl}" target="_blank" rel="noreferrer">查看知乎原文</a></p>
-            <div class="reader-body">${body.map((p) => `<p>${p}</p>`).join("")}</div>
+            <h2>${escapeHtml(article.title)}</h2>
+            ${sourceUrl ? `<p class="reader-meta"><a class="reader-source-link" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noreferrer">查看知乎原文</a></p>` : ""}
+            <div class="reader-body">${body.map((p) => `<p>${escapeHtml(p)}</p>`).join("")}</div>
           </div>
           <div class="reader-actions">
             <button class="primary" type="button" data-action="question-from-reader">基于原文真实经历提问</button>
@@ -3749,7 +4709,7 @@
           <div class="chat-layout">
             <aside class="chat-side">
               <div class="mini-person">
-                <div class="mini-peep-card chat-peep-card"><img src="${avatarSrc(person.avatar)}" alt=""></div>
+                <div class="mini-peep-card chat-peep-card">${avatarImg(person.avatar, 0, "", person.name)}</div>
                 <div>
                   <strong>${person.name}</strong>
                   <p style="color:var(--muted);line-height:1.6">${person.role}<br>${getPath(person.pathId).name}</p>
@@ -3819,7 +4779,7 @@
     function renderSavedSampleCard(person) {
       return `
         <article class="saved-sample-card">
-          <div class="mini-peep-card"><img src="${avatarSrc(person.avatar)}" alt=""></div>
+          <div class="mini-peep-card">${avatarImg(person.avatar, 0, "", person.name)}</div>
           <div class="saved-sample-info">
             <strong>${escapeHtml(person.name)}</strong>
             <p>路径：${escapeHtml(getPath(person.pathId).name)}</p>
@@ -3883,7 +4843,7 @@
       state.readerArticleIndex = articleIndex;
       state.readerOpen = true;
       state.askPanelOpen = false;
-      if (state.page === "paths" && state.pathExpanded) {
+      if (state.page === "paths" && isSampleWallActive()) {
         syncSampleView();
         return;
       }
@@ -3904,7 +4864,7 @@
       state.questionText = buildQuestionText(getPerson());
       state.askPanelOpen = true;
       state.readerOpen = false;
-      if (state.page === "paths" && state.pathExpanded) {
+      if (state.page === "paths" && isSampleWallActive()) {
         syncSampleView();
         return;
       }
@@ -3925,7 +4885,7 @@
       state.readerArticleIndex = 0;
       state.readerOpen = false;
       state.askPanelOpen = false;
-      if (state.page === "samples" || (state.page === "paths" && state.pathExpanded)) {
+      if (isSampleWallActive()) {
         syncSampleView();
         return;
       }
@@ -3933,7 +4893,7 @@
     }
 
     function syncSampleView() {
-      const stage = document.querySelector(".sample-stage");
+      const stage = document.querySelector(".sample-wall-panel, .sample-stage");
       if (!stage) return;
       stage.outerHTML = renderSampleStage();
       bindEvents();
@@ -3968,7 +4928,7 @@
       }
       const el = document.createElement("div");
       el.className = "save-animation";
-      el.innerHTML = `<img src="${avatarSrc(person.avatar)}" alt="">`;
+      el.innerHTML = avatarImg(person.avatar, 0, "", person.name);
       document.body.appendChild(el);
       setTimeout(() => el.remove(), 1200);
       const libraryButton = document.querySelector('[data-action="library"]');
@@ -4032,7 +4992,14 @@
           state.homeInputTouched = true;
           card?.classList.add("is-editing");
         });
-        homeInput.addEventListener("input", updateInputState);
+        homeInput.addEventListener("input", () => {
+          updateInputState();
+          state.needClarification = false;
+          state.clarificationQuestion = "";
+          state.clarificationOptions = [];
+          state.clarificationAnswer = "";
+          state.clarificationShown = false;
+        });
         updateInputState();
       }
       document.querySelectorAll(".sample-person[data-action='select-person']").forEach((node) => {
@@ -4056,23 +5023,31 @@
           if (action === "paths") setPage("paths");
           if (action === "library") setPage("library");
           if (action === "samples") {
-            if (state.pathExpanded) setPage("paths");
+            if (state.pathExpanded || isDirectPeopleResult()) setPage("paths");
             else setPage("samples");
           }
           if (action === "community") setPage("community");
           if (action === "start") {
-            const input = document.getElementById("questionInput");
-            const activePrompt = input?.dataset.prompt || queryPrompts[state.promptIndex % queryPrompts.length];
-            state.question = input ? input.value.trim() || activePrompt : activePrompt;
-            state.homeInputTouched = false;
+            handleStartQuery();
+          }
+          if (action === "submit-clarification") {
+            submitClarification(target.dataset.answer || "");
+          }
+          if (action === "skip-clarification") {
+            skipClarification();
+          }
+          if (action === "retry-search") {
+            state.searchError = "";
             startLoading();
           }
           if (action === "choose-path") {
             const card = target.closest(".path-card");
             const showcase = card?.closest(".path-showcase");
-            state.selectedPathId = target.dataset.id;
+            const selectedPathId = target.dataset.id;
+            const pathPeopleList = peopleForPath(selectedPathId);
+            state.selectedPathId = selectedPathId;
             state.pathExpanded = true;
-            state.selectedPersonId = "";
+            state.selectedPersonId = pathPeopleList.length === 1 ? pathPeopleList[0].id : "";
             state.readerOpen = false;
             state.readerArticleIndex = 0;
             state.askPanelOpen = false;
@@ -4101,7 +5076,7 @@
             state.askPanelOpen = false;
             syncSampleView();
           }
-          if (action === "open-reader") openReader(Number(target.dataset.index || 0));
+          if (action === "open-reader") openReader(Number(target.dataset.articleIndex || target.dataset.index || 0));
           if (action === "close-reader") closeReader();
           if (action === "ask-person" || action === "question-from-reader") {
             openAskPanel();
@@ -4148,7 +5123,7 @@
             }
           }
           if (action === "save-community") {
-            if (state.pathExpanded) setPage("paths");
+            if (state.pathExpanded || isDirectPeopleResult()) setPage("paths");
             else setPage("samples");
           }
         });
