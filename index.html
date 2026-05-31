@@ -860,7 +860,7 @@
 
     .loading .crowd-stage {
       top: auto;
-      bottom: 0;
+      bottom: 18px;
       height: 32vh;
       min-height: 285px;
       max-height: none;
@@ -2552,6 +2552,56 @@
       gap: 24px;
     }
 
+    .library-page-head {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 22px;
+      width: min(1120px, 100%);
+      max-width: 1120px;
+      min-height: 64px;
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    .library-page-head h1 {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max-content;
+      max-width: calc(100% - 260px);
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .library-page-head .library-actions {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .library-back-button {
+      display: inline-flex;
+      align-items: center;
+      min-height: 38px;
+      padding: 8px 0;
+      border: 0;
+      border-bottom: 1px solid transparent;
+      border-radius: 0;
+      color: rgba(111, 104, 95, 0.9);
+      background: transparent;
+      font-weight: 850;
+      transition: color 160ms ease, border-color 160ms ease, transform 160ms ease;
+    }
+
+    .library-back-button:hover {
+      color: #3f2b0f;
+      border-color: rgba(216, 154, 69, 0.36);
+      transform: translateX(-2px);
+    }
+
     .library-question-group {
       width: min(1120px, 100%);
       margin: 0 auto 24px;
@@ -2718,8 +2768,8 @@
     .save-animation {
       position: fixed;
       z-index: 120;
-      right: 104px;
-      top: 128px;
+      left: var(--save-start-x, calc(100vw - 176px));
+      top: var(--save-start-y, 128px);
       width: 72px;
       height: 88px;
       padding: 6px;
@@ -2728,6 +2778,7 @@
       background: rgba(255, 255, 255, 0.86);
       box-shadow: 0 18px 54px rgba(52, 43, 32, 0.08);
       animation: saveFly 1.1s var(--ease) both;
+      transform-origin: 50% 50%;
       pointer-events: none;
     }
 
@@ -3011,10 +3062,10 @@
     }
 
     @keyframes saveFly {
-      0% { opacity: 0; transform: translate(-420px, 300px) scale(0.9); }
-      20% { opacity: 1; transform: translate(-360px, 250px) scale(1); }
-      76% { opacity: 1; transform: translate(-36px, 18px) scale(0.62); }
-      100% { opacity: 0; transform: translate(0, 0) scale(0.28); }
+      0% { opacity: 0; transform: translate(0, 0) scale(0.92); }
+      16% { opacity: 1; transform: translate(var(--save-mid-x, 18px), var(--save-mid-y, -22px)) scale(1); }
+      76% { opacity: 1; transform: translate(var(--save-near-x, 0), var(--save-near-y, 0)) scale(0.58); }
+      100% { opacity: 0; transform: translate(var(--save-dx, 0), var(--save-dy, 0)) scale(0.24); }
     }
 
     @keyframes navBounce {
@@ -3114,6 +3165,9 @@
       requestTimeoutMs: 45000,
       useMockFallback: false,
       useMockUserFallback: true
+    };
+    const STORAGE_KEYS = {
+      savedQuestionGroups: "life-path.savedQuestionGroups.v1"
     };
 
     const mockZhihuUser = {
@@ -3484,6 +3538,7 @@
       loadingStep: 0,
       selectedPathId: initialMockMode ? "trial" : "",
       selectedPersonId: "",
+      selectedSavedSampleId: "",
       pathExpanded: false,
       readerOpen: false,
       readerArticleIndex: 0,
@@ -3495,6 +3550,8 @@
       searchError: "",
       searchRequestId: 0,
       savedQuestionGroups: [],
+      previousPage: "",
+      previousState: null,
       hasSubmittedQuestion: false,
       submittedQuestion: "",
       needClarification: false,
@@ -3508,6 +3565,7 @@
       aiTyping: false,
       askPanelOpen: false
     };
+    state.savedQuestionGroups = loadSavedQuestionGroups();
 
     const previewParams = new URLSearchParams(window.location.search);
     const previewPage = previewParams.get("page");
@@ -3785,6 +3843,273 @@
       return state.loadingSteps.length ? state.loadingSteps : defaultLoadingSteps(state.question);
     }
 
+    function clonePlain(value, fallback = null) {
+      try {
+        return JSON.parse(JSON.stringify(value));
+      } catch (error) {
+        return fallback;
+      }
+    }
+
+    function serializePathForLibrary(path) {
+      const normalized = normalizePath(path || {});
+      return {
+        id: normalized.id,
+        name: normalized.name,
+        count: normalized.count,
+        desc: normalized.desc,
+        short: normalized.short
+      };
+    }
+
+    function serializePersonForLibrary(person) {
+      const articles = toArray(person.articles).map((article, index) => normalizeArticle(article, index, person)).slice(0, 4);
+      return {
+        id: person.id,
+        name: person.name,
+        pathId: person.pathId,
+        sampleType: person.sampleType || person.sample_type || "",
+        sample_type: person.sample_type || person.sampleType || "",
+        role: person.role,
+        badge: person.badge,
+        gender: person.gender,
+        avatar: person.avatar,
+        situation: person.situation,
+        actionSummary: person.actionSummary,
+        realDetails: toArray(person.realDetails).slice(0, 5),
+        currentStatus: person.currentStatus,
+        entrySituation: person.entrySituation,
+        entryStatus: person.entryStatus,
+        oneLine: person.oneLine,
+        who: person.who,
+        overlaps: toArray(person.overlaps || person.matchReasons).slice(0, 6),
+        matchReasons: toArray(person.matchReasons || person.overlaps).slice(0, 6),
+        timeline: toArray(person.timeline).slice(0, 8),
+        sourceTitle: person.sourceTitle,
+        sourceUrl: person.sourceUrl,
+        sourceExcerpt: person.sourceExcerpt,
+        source: {
+          title: textOf(person.source?.title || person.sourceTitle),
+          url: textOf(person.source?.url || person.sourceUrl),
+          excerpt: textOf(person.source?.excerpt || person.sourceExcerpt),
+          type: textOf(person.source?.type || person.source?.content_type || person.source?.contentType),
+          content_type: textOf(person.source?.content_type || person.source?.contentType || person.source?.type),
+          authorName: textOf(person.source?.authorName || person.source?.author_name || person.name),
+          author_name: textOf(person.source?.author_name || person.source?.authorName || person.name),
+          author_avatar: textOf(person.source?.author_avatar || person.avatar),
+          updatedAt: textOf(person.source?.updatedAt || person.source?.updated_at)
+        },
+        lesson: person.lesson,
+        articles: articles.map((article) => ({
+          id: article.id,
+          title: article.title,
+          author: article.author,
+          sourceName: article.sourceName,
+          sourceUrl: article.sourceUrl,
+          publishedAt: article.publishedAt,
+          summary: article.summary || "",
+          body: toArray(article.body).slice(0, 20)
+        }))
+      };
+    }
+
+    function normalizeSavedQuestionGroup(item = {}, groupIndex = 0) {
+      const question = textOf(item.question).trim();
+      if (!question) return null;
+      const groupTime = numberOf(item.lastSavedAt || item.last_saved_at || item.createdAt || item.created_at, Date.now() - groupIndex);
+      const samples = toArray(item.samples).map((sample = {}, sampleIndex) => {
+        if (sample.isMock || sample.queryId === "mock_query" || sample.query_id === "mock_query") return null;
+        const savedPerson = sample.person ? normalizePerson(sample.person, sampleIndex, sample.person.pathId || sample.person.path_id || sample.path?.id || "") : null;
+        const personId = textOf(sample.personId || sample.person_id || savedPerson?.id);
+        if (!personId) return null;
+        const savedPath = sample.path ? serializePathForLibrary(sample.path) : null;
+        return {
+          sampleId: textOf(sample.sampleId || sample.sample_id || `saved_${slugify(question, "q")}_${slugify(personId, `p_${sampleIndex}`)}`),
+          personId,
+          savedAt: numberOf(sample.savedAt || sample.saved_at, groupTime - sampleIndex),
+          queryId: textOf(sample.queryId || sample.query_id || ""),
+          person: savedPerson ? serializePersonForLibrary(savedPerson) : null,
+          path: savedPath
+        };
+      }).filter(Boolean);
+      return {
+        id: textOf(item.id || `q_${groupTime}_${groupIndex}`),
+        question,
+        createdAt: numberOf(item.createdAt || item.created_at, groupTime),
+        lastSavedAt: numberOf(item.lastSavedAt || item.last_saved_at, groupTime),
+        samples
+      };
+    }
+
+    function loadSavedQuestionGroups() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEYS.savedQuestionGroups);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return toArray(parsed).map(normalizeSavedQuestionGroup).filter(Boolean);
+      } catch (error) {
+        console.warn("Saved library restore failed.", error);
+        return [];
+      }
+    }
+
+    function persistSavedQuestionGroups() {
+      try {
+        const groups = (state.savedQuestionGroups || [])
+          .map(normalizeSavedQuestionGroup)
+          .filter((group) => group && group.samples.length);
+        state.savedQuestionGroups = groups;
+        localStorage.setItem(STORAGE_KEYS.savedQuestionGroups, JSON.stringify(groups));
+      } catch (error) {
+        console.warn("Saved library persist failed.", error);
+      }
+    }
+
+    function normalizeSavedPersonFromSample(sample, index = 0) {
+      if (!sample?.person) return null;
+      return normalizePerson(sample.person, index, sample.person.pathId || sample.person.path_id || sample.path?.id || "");
+    }
+
+    function getSavedSample(sampleId) {
+      if (!sampleId) return null;
+      for (const group of state.savedQuestionGroups || []) {
+        const found = toArray(group.samples).find((sample) => sample.sampleId === sampleId);
+        if (found) return found;
+      }
+      return null;
+    }
+
+    function getSavedPerson(id) {
+      const selectedSample = getSavedSample(state.selectedSavedSampleId);
+      if (selectedSample && (!id || selectedSample.personId === id)) {
+        const selectedPerson = normalizeSavedPersonFromSample(selectedSample);
+        if (selectedPerson) return selectedPerson;
+      }
+      for (const group of state.savedQuestionGroups || []) {
+        for (const [index, sample] of toArray(group.samples).entries()) {
+          if (sample.personId !== id) continue;
+          const person = normalizeSavedPersonFromSample(sample, index);
+          if (person) return person;
+        }
+      }
+      return null;
+    }
+
+    function getSavedPath(id) {
+      const selectedSample = getSavedSample(state.selectedSavedSampleId);
+      if (selectedSample?.path && (!id || selectedSample.path.id === id || selectedSample.person?.pathId === id)) {
+        return normalizePath(selectedSample.path);
+      }
+      for (const group of state.savedQuestionGroups || []) {
+        for (const sample of toArray(group.samples)) {
+          if (!sample.path) continue;
+          if (!id || sample.path.id === id || sample.person?.pathId === id) return normalizePath(sample.path);
+        }
+      }
+      return null;
+    }
+
+    function getSavedPeopleForPath(pathId) {
+      const saved = [];
+      for (const group of state.savedQuestionGroups || []) {
+        for (const [index, sample] of toArray(group.samples).entries()) {
+          const person = normalizeSavedPersonFromSample(sample, index);
+          if (person && person.pathId === pathId) saved.push(person);
+        }
+      }
+      return saved;
+    }
+
+    function getLibrarySamplePerson(sample) {
+      return normalizeSavedPersonFromSample(sample) || people.find((person) => person.id === sample.personId) || null;
+    }
+
+    function getDisplayPathDesc(path) {
+      const desc = textOf(path?.desc || "");
+      if (!desc) {
+        const name = textOf(path?.name || "");
+        if (/求职|找工作|回到|就业/.test(name)) return "他们大多回到求职轨道，在投简历、面试和岗位预期之间重新找位置。";
+        if (/暂停|休息|恢复|观察|停下来/.test(name)) return "他们先停下来恢复状态，再慢慢观察职业方向和下一步行动。";
+        return "";
+      }
+      return desc
+        .replace(/^这些样本主要/, "他们大多")
+        .replace(/^这些样本大多/, "他们大多")
+        .replace(/^这些样本/, "他们")
+        .replace(/这些样本/g, "他们");
+    }
+
+    function getSearchFailureMessage(error) {
+      const message = textOf(error?.message || error?.name || "");
+      if (error?.name === "AbortError" || /abort|timeout|timed out/i.test(message)) {
+        return "这次寻找真实经历花得有点久，可以稍后重试。";
+      }
+      return "这次没有成功连上真实结果，可以稍后重试。";
+    }
+
+    function capturePageState() {
+      return {
+        page: state.page,
+        question: state.question,
+        submittedQuestion: state.submittedQuestion,
+        hasSubmittedQuestion: state.hasSubmittedQuestion,
+        selectedPathId: state.selectedPathId,
+        selectedPersonId: state.selectedPersonId,
+        selectedSavedSampleId: state.selectedSavedSampleId,
+        pathExpanded: state.pathExpanded,
+        readerOpen: state.readerOpen,
+        readerArticleIndex: state.readerArticleIndex,
+        askPanelOpen: state.askPanelOpen,
+        questionText: state.questionText,
+        messages: clonePlain(state.messages, []),
+        backendStatus: state.backendStatus,
+        searchError: state.searchError
+      };
+    }
+
+    function restorePageState(snapshot) {
+      if (!snapshot) return false;
+      state.page = snapshot.page || "home";
+      state.question = snapshot.question || state.question;
+      state.submittedQuestion = snapshot.submittedQuestion || "";
+      state.hasSubmittedQuestion = Boolean(snapshot.hasSubmittedQuestion);
+      state.selectedPathId = snapshot.selectedPathId || "";
+      state.selectedPersonId = snapshot.selectedPersonId || "";
+      state.selectedSavedSampleId = snapshot.selectedSavedSampleId || "";
+      state.pathExpanded = Boolean(snapshot.pathExpanded);
+      state.readerOpen = Boolean(snapshot.readerOpen);
+      state.readerArticleIndex = numberOf(snapshot.readerArticleIndex, 0);
+      state.askPanelOpen = Boolean(snapshot.askPanelOpen);
+      state.questionText = snapshot.questionText || defaultQuestionText();
+      state.messages = clonePlain(snapshot.messages, []);
+      state.aiTyping = false;
+      state.backendStatus = snapshot.backendStatus || state.backendStatus;
+      state.searchError = snapshot.searchError || "";
+      return true;
+    }
+
+    function openLibrary() {
+      if (state.page !== "library") {
+        state.previousPage = state.page;
+        state.previousState = capturePageState();
+      }
+      setPage("library");
+    }
+
+    function returnFromLibrary() {
+      const previousState = state.previousState;
+      state.previousPage = "";
+      state.previousState = null;
+      if (!previousState || !restorePageState(previousState)) {
+        setPage("home");
+        return;
+      }
+      clearLoadingTimers();
+      clearChatReplyTimer();
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
     function normalizeSearchResponse(payload, query) {
       const body = getResponseBody(payload) || {};
       let nextPaths = toArray(body.paths || body.routes || body.directions || body.pathways).map(normalizePath);
@@ -3860,6 +4185,7 @@
       state.queryId = null;
       state.selectedPathId = "";
       state.selectedPersonId = "";
+      state.selectedSavedSampleId = "";
       state.pathExpanded = false;
       state.readerOpen = false;
       state.readerArticleIndex = 0;
@@ -3991,11 +4317,12 @@
     }
 
     function getPath(id = state.selectedPathId) {
-      return paths.find((item) => item.id === id) || paths[0] || normalizePath({ name: "未知路径" });
+      return paths.find((item) => item.id === id) || getSavedPath(id) || paths[0] || normalizePath({ name: "未知路径" });
     }
 
     function getPerson(id = state.selectedPersonId) {
-      return people.find((item) => item.id === id) || people[0] || normalizePerson({ name: "未知样本" });
+      const selectedSavedPerson = state.selectedSavedSampleId ? getSavedPerson(id) : null;
+      return selectedSavedPerson || people.find((item) => item.id === id) || getSavedPerson(id) || people[0] || normalizePerson({ name: "未知样本" });
     }
 
     function getProfileUrl(person) {
@@ -4008,7 +4335,13 @@
 
     function peopleForPath(pathId = state.selectedPathId) {
       const matched = people.filter((person) => person.pathId === pathId);
-      return matched;
+      const seen = new Set(matched.map((person) => person.id));
+      const saved = getSavedPeopleForPath(pathId).filter((person) => {
+        if (seen.has(person.id)) return false;
+        seen.add(person.id);
+        return true;
+      });
+      return [...matched, ...saved];
     }
 
     function setPage(page) {
@@ -4357,7 +4690,7 @@
         clearLoadingTimers();
         resetSearchResults();
         state.backendStatus = "error";
-        state.searchError = "这次没有成功连上真实结果，可以稍后重试。";
+        state.searchError = getSearchFailureMessage(error);
         setPage("paths");
       }
     }
@@ -4391,7 +4724,7 @@
               <div class="expanded-heading">
                 <div>
                   <h1>${escapeHtml(selectedPath.name)}的人</h1>
-                  <p>${escapeHtml(selectedPath.desc)}</p>
+                  <p>${escapeHtml(getDisplayPathDesc(selectedPath))}</p>
                 </div>
               </div>
               <div class="path-showcase is-expanded" aria-label="${escapeHtml(selectedPath.name)}的前人样本库">
@@ -4424,7 +4757,7 @@
       if (resultMode === "single_path") {
         return {
           title: `${onlyPath?.name || "相近真实经历"}的人`,
-          subtitle: onlyPath?.desc || "这些公开经历和你的问题有一定相关性。"
+          subtitle: getDisplayPathDesc(onlyPath) || "这些公开经历和你的问题有一定相关性。"
         };
       }
       if (resultMode === "single_person") {
@@ -4443,8 +4776,8 @@
       return `
         <section class="screen paths-screen low-recall-screen">
           <div class="paths-copy low-recall-copy">
-            <h1>这次没有找到足够可信的公开经历</h1>
-            <p class="lead">可以换一种更具体的说法，或补充你的处境后再试一次。</p>
+            <h1>这次没有找到足够相似的公开经历。</h1>
+            <p class="lead">你可以换一种更具体的说法再试试。</p>
           </div>
         </section>
       `;
@@ -4471,7 +4804,7 @@
             <h2>${escapeHtml(path.name)}</h2>
           </div>
           <span class="path-count">${path.count} 人走过</span>
-          <p class="path-desc">${escapeHtml(path.desc)}</p>
+          <p class="path-desc">${escapeHtml(getDisplayPathDesc(path))}</p>
           <span class="path-card-peeps" aria-hidden="true">
             ${pathPeople(path.id, 4).map((person, peepIndex) => avatarImg(person.avatar, peepIndex, "", person.name)).join("")}
           </span>
@@ -4503,7 +4836,7 @@
           <div class="samples-header">
             <div>
               <h1>${selectedPath.name === "去了又回来" ? "去了又回来的人" : selectedPath.name + "的人"}</h1>
-              <p>${selectedPath.desc}</p>
+              <p>${escapeHtml(getDisplayPathDesc(selectedPath))}</p>
             </div>
           </div>
           ${renderSampleStage()}
@@ -4532,7 +4865,10 @@
     }
 
     function getWallPeopleForSelectedPath() {
-      if (!paths.length) return people.slice(0, 6);
+      if (!paths.length) {
+        const selectedPerson = state.selectedPersonId ? getPerson() : null;
+        return selectedPerson?.id ? [selectedPerson] : people.slice(0, 6);
+      }
       const matched = peopleForPath(getPath().id);
       return (matched.length ? matched : people).slice(0, 6);
     }
@@ -4745,7 +5081,10 @@
         .sort((a, b) => (b.lastSavedAt || 0) - (a.lastSavedAt || 0) || (b.createdAt || 0) - (a.createdAt || 0));
       return `
         <section class="screen library-screen">
-          <div class="paths-copy">
+          <div class="paths-copy library-page-head">
+            <div class="library-actions">
+              <button class="library-back-button" type="button" data-action="library-back">← 返回上一页</button>
+            </div>
             <h1>我的样本库</h1>
           </div>
           ${groups.length ? `
@@ -4760,8 +5099,8 @@
     function renderLibraryQuestionGroup(group) {
       const samples = [...group.samples]
         .sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0))
-        .map((sample) => people.find((person) => person.id === sample.personId))
-        .filter(Boolean);
+        .map((sample) => ({ sample, person: getLibrarySamplePerson(sample) }))
+        .filter((item) => item.person);
       if (!samples.length) return "";
       return `
         <section class="library-question-group">
@@ -4770,13 +5109,13 @@
             <span>已保存 ${samples.length} 个样本</span>
           </div>
           <div class="saved-sample-list">
-            ${samples.map(renderSavedSampleCard).join("")}
+            ${samples.map(({ person, sample }) => renderSavedSampleCard(person, sample)).join("")}
           </div>
         </section>
       `;
     }
 
-    function renderSavedSampleCard(person) {
+    function renderSavedSampleCard(person, sample = {}) {
       return `
         <article class="saved-sample-card">
           <div class="mini-peep-card">${avatarImg(person.avatar, 0, "", person.name)}</div>
@@ -4786,8 +5125,8 @@
             <p>${escapeHtml(person.oneLine)}</p>
           </div>
           <div class="saved-sample-actions">
-            <button class="secondary" type="button" data-action="open-saved" data-id="${person.id}">回看 TA 的经历</button>
-            <button class="text-button" type="button" data-action="open-saved-chat" data-id="${person.id}">继续问 AI 分身</button>
+            <button class="secondary" type="button" data-action="open-saved" data-id="${person.id}" data-sample-id="${escapeHtml(sample.sampleId || "")}">回看 TA 的经历</button>
+            <button class="text-button" type="button" data-action="open-saved-chat" data-id="${person.id}" data-sample-id="${escapeHtml(sample.sampleId || "")}">继续问 AI 分身</button>
           </div>
         </article>
       `;
@@ -4882,6 +5221,7 @@
 
     function selectPerson(id) {
       state.selectedPersonId = id;
+      state.selectedSavedSampleId = "";
       state.readerArticleIndex = 0;
       state.readerOpen = false;
       state.askPanelOpen = false;
@@ -4899,11 +5239,62 @@
       bindEvents();
     }
 
-    function savePerson() {
-      const person = people.find((item) => item.id === state.selectedPersonId);
+    function isMockSaveContext(person) {
+      return Boolean(
+        window.LIFE_PATH_FORCE_MOCK ||
+        API_CONFIG.useMockFallback ||
+        state.backendStatus === "mock" ||
+        state.queryId === "mock_query" ||
+        person?.raw?.queryId === "mock_query"
+      );
+    }
+
+    function findSaveAnimationSource(trigger) {
+      return trigger?.closest(".person-card, .chat-side, .sample-wall-panel")?.querySelector("img") ||
+        document.querySelector(".person-card .card-peep img, .chat-peep-card img, .sample-entry-card.is-selected img, .sample-person.is-selected img");
+    }
+
+    function runSaveAnimation(person, trigger) {
+      const sourceNode = findSaveAnimationSource(trigger);
+      const sourceRect = sourceNode?.getBoundingClientRect();
+      const triggerRect = trigger?.getBoundingClientRect();
+      const libraryButton = document.querySelector('.topbar [data-action="library"]');
+      const targetRect = libraryButton?.getBoundingClientRect();
+      const sourceVisible = sourceRect &&
+        sourceRect.bottom > 0 &&
+        sourceRect.top < window.innerHeight &&
+        sourceRect.right > 0 &&
+        sourceRect.left < window.innerWidth;
+      const sourceCenterX = sourceVisible ? sourceRect.left + sourceRect.width / 2 : (triggerRect ? triggerRect.left + triggerRect.width / 2 : window.innerWidth - 176);
+      const sourceCenterY = sourceVisible ? sourceRect.top + sourceRect.height / 2 : (triggerRect ? triggerRect.top + triggerRect.height / 2 : 172);
+      const targetCenterX = targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth - 110;
+      const targetCenterY = targetRect ? targetRect.top + targetRect.height / 2 : 43;
+      const dx = targetCenterX - sourceCenterX;
+      const dy = targetCenterY - sourceCenterY;
+      const el = document.createElement("div");
+      el.className = "save-animation";
+      el.style.setProperty("--save-start-x", `${Math.round(sourceCenterX - 36)}px`);
+      el.style.setProperty("--save-start-y", `${Math.round(sourceCenterY - 44)}px`);
+      el.style.setProperty("--save-dx", `${Math.round(dx)}px`);
+      el.style.setProperty("--save-dy", `${Math.round(dy)}px`);
+      el.style.setProperty("--save-mid-x", `${Math.round(dx * 0.18)}px`);
+      el.style.setProperty("--save-mid-y", `${Math.round(dy * 0.14 - 28)}px`);
+      el.style.setProperty("--save-near-x", `${Math.round(dx * 0.88)}px`);
+      el.style.setProperty("--save-near-y", `${Math.round(dy * 0.88 - 10)}px`);
+      el.innerHTML = avatarImg(person.avatar, 0, "", person.name);
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1200);
+    }
+
+    function savePerson(trigger = null) {
+      const person = state.selectedPersonId ? getPerson(state.selectedPersonId) : null;
       const question = state.submittedQuestion || state.question;
       if (!state.hasSubmittedQuestion || !question || !person?.id) {
         showToast("请先完成一次寻找，再保存样本");
+        return;
+      }
+      if (isMockSaveContext(person)) {
+        showToast("Demo 样本不会存入我的样本库");
         return;
       }
       if (!state.savedQuestionGroups) state.savedQuestionGroups = [];
@@ -4919,18 +5310,29 @@
         };
         state.savedQuestionGroups.unshift(group);
       }
-      if (!group.samples.some((item) => item.personId === person.id)) {
-        group.samples.unshift({ personId: person.id, savedAt: now });
+      const savedPerson = serializePersonForLibrary(person);
+      const savedPath = serializePathForLibrary(getPath(person.pathId));
+      const existingSample = group.samples.find((item) => item.personId === person.id);
+      if (!existingSample) {
+        group.samples.unshift({
+          sampleId: `s_${now}_${slugify(person.id, "person")}`,
+          personId: person.id,
+          savedAt: now,
+          queryId: state.queryId || "",
+          person: savedPerson,
+          path: savedPath
+        });
         group.lastSavedAt = now;
+      } else {
+        existingSample.person = savedPerson;
+        existingSample.path = savedPath;
+        existingSample.queryId = existingSample.queryId || state.queryId || "";
       }
+      persistSavedQuestionGroups();
       if (!window.LIFE_PATH_FORCE_MOCK) {
         postJson(API_CONFIG.saveEndpoint, { queryId: state.queryId, query: question, personId: person.id }).catch(() => {});
       }
-      const el = document.createElement("div");
-      el.className = "save-animation";
-      el.innerHTML = avatarImg(person.avatar, 0, "", person.name);
-      document.body.appendChild(el);
-      setTimeout(() => el.remove(), 1200);
+      runSaveAnimation(person, trigger);
       const libraryButton = document.querySelector('[data-action="library"]');
       if (libraryButton) {
         libraryButton.classList.add("is-bouncing");
@@ -5021,7 +5423,8 @@
             window.open(user.profileUrl, "_blank", "noopener");
           }
           if (action === "paths") setPage("paths");
-          if (action === "library") setPage("library");
+          if (action === "library") openLibrary();
+          if (action === "library-back") returnFromLibrary();
           if (action === "samples") {
             if (state.pathExpanded || isDirectPeopleResult()) setPage("paths");
             else setPage("samples");
@@ -5048,6 +5451,7 @@
             state.selectedPathId = selectedPathId;
             state.pathExpanded = true;
             state.selectedPersonId = pathPeopleList.length === 1 ? pathPeopleList[0].id : "";
+            state.selectedSavedSampleId = "";
             state.readerOpen = false;
             state.readerArticleIndex = 0;
             state.askPanelOpen = false;
@@ -5098,8 +5502,9 @@
             const input = document.getElementById("chatInput");
             addChat(input ? input.value : "");
           }
-          if (action === "save-person") savePerson();
+          if (action === "save-person") savePerson(target);
           if (action === "open-saved") {
+            state.selectedSavedSampleId = target.dataset.sampleId || "";
             state.selectedPersonId = target.dataset.id;
             state.selectedPathId = getPerson(state.selectedPersonId).pathId;
             state.readerOpen = false;
@@ -5108,6 +5513,7 @@
             setPage("samples");
           }
           if (action === "open-saved-chat") {
+            state.selectedSavedSampleId = target.dataset.sampleId || "";
             state.selectedPersonId = target.dataset.id;
             state.selectedPathId = getPerson(state.selectedPersonId).pathId;
             state.readerOpen = false;
