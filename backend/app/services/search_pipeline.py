@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import time
 from typing import Any
 
@@ -105,12 +106,19 @@ async def run_search_pipeline(
         )
     else:
         zhihu_search_start = time.perf_counter()
+        env_skip_reasons = []
         if not settings.has_zhihu_access_secret:
-            errors.append(
-                {"keyword": "", "error": "Zhihu access secret is not configured"}
-            )
+            env_skip_reasons.append("missing_access_secret")
+            errors.append({"keyword": "", "error": "Zhihu access secret is not configured"})
         if not settings.has_zhihu_search_url:
+            env_skip_reasons.append("missing_search_url")
             errors.append({"keyword": "", "error": "Zhihu search URL is not configured"})
+        _append_zhihu_env_skip_debug(
+            search_execution_debug,
+            planned_search_keywords,
+            phase="primary",
+            skip_reasons=env_skip_reasons,
+        )
         _record_perf_stage(
             performance_debug,
             "zhihu_search_total",
@@ -501,6 +509,8 @@ async def run_search_pipeline(
         fallback_raw_results_count=fallback_raw_results_count,
     )
     response.setdefault("debug", {}).update(llm_cluster_debug)
+    response["debug"]["zhihuEnvDebug"] = _build_zhihu_env_debug()
+    response["debug"]["zhihuSearchDebug"] = search_execution_debug
     response["debug"]["searchRecallDebug"] = _build_search_recall_debug(
         planned_keywords=keywords,
         primary_keywords=planned_search_keywords,
@@ -673,7 +683,12 @@ async def _search_zhihu_keywords(
             "keyword": keyword,
             "keywordIndex": index,
             "requestedCount": 10,
+            "status": 0,
+            "errorType": "",
+            "errorMessage": "",
+            "envMissing": False,
             "rawResultCount": 0,
+            "rawResultsCount": 0,
             "cumulativeRawBefore": before_count,
             "cumulativeRawAfter": before_count,
             "skipped": False,
@@ -710,16 +725,29 @@ async def _search_zhihu_keywords(
                 tagged_batch.append(tagged_item)
             results.extend(tagged_batch)
             debug_item["rawResultCount"] = len(tagged_batch)
+            debug_item["rawResultsCount"] = len(tagged_batch)
             debug_item["cumulativeRawAfter"] = len(results)
+            debug_item["status"] = 200
         except ZhihuClientError as exc:
-            message = str(exc)
+            message = _short_debug_error(str(exc))
             errors.append({"keyword": keyword, "error": message})
             debug_item["error"] = message
+            debug_item["errorMessage"] = message
+            debug_item["errorType"] = exc.error_type
+            debug_item["status"] = exc.status_code
+            debug_item["envMissing"] = exc.error_type == "env_missing"
+            if debug_item["envMissing"]:
+                debug_item["skipped"] = True
+                debug_item["skipReason"] = "env_missing"
             print(f"[search] {message}")
         except Exception as exc:
-            message = f"Unexpected Zhihu search error for keyword={keyword!r}: {exc}"
+            message = _short_debug_error(
+                f"Unexpected Zhihu search error for keyword={keyword!r}: {type(exc).__name__}"
+            )
             errors.append({"keyword": keyword, "error": message})
             debug_item["error"] = message
+            debug_item["errorMessage"] = message
+            debug_item["errorType"] = "unexpected_error"
             print(f"[search] {message}")
         debug_item["elapsedMs"] = _elapsed_ms(keyword_start)
         _log_perf(
@@ -734,6 +762,69 @@ async def _search_zhihu_keywords(
         if execution_debug is not None:
             execution_debug.append(debug_item)
     return results
+
+
+def _append_zhihu_env_skip_debug(
+    execution_debug: list[dict[str, Any]],
+    keywords: list[str],
+    *,
+    phase: str,
+    skip_reasons: list[str],
+) -> None:
+    skip_reason = ",".join(skip_reasons) or "env_missing"
+    message = _zhihu_env_skip_message(skip_reasons)
+    for index, keyword in enumerate(keywords):
+        execution_debug.append(
+            {
+                "phase": phase,
+                "keyword": keyword,
+                "keywordIndex": index,
+                "requestedCount": 10,
+                "status": 0,
+                "errorType": "env_missing",
+                "error": message,
+                "errorMessage": message,
+                "envMissing": True,
+                "rawResultCount": 0,
+                "rawResultsCount": 0,
+                "cumulativeRawBefore": 0,
+                "cumulativeRawAfter": 0,
+                "skipped": True,
+                "skipReason": skip_reason,
+                "elapsedMs": 0.0,
+            }
+        )
+
+
+def _zhihu_env_skip_message(skip_reasons: list[str]) -> str:
+    if "missing_access_secret" in skip_reasons:
+        return "Zhihu search skipped: ZHIHU_ACCESS_SECRET is not configured"
+    if "missing_search_url" in skip_reasons:
+        return "Zhihu search skipped: ZHIHU_SEARCH_URL is not configured"
+    return "Zhihu search skipped: required env is not configured"
+
+
+def _build_zhihu_env_debug() -> dict[str, Any]:
+    return {
+        "hasAccessSecret": settings.has_zhihu_access_secret,
+        "hasSearchUrl": settings.has_zhihu_search_url,
+        "searchUrlConfigured": _env_is_configured("ZHIHU_SEARCH_URL"),
+        "queryParam": settings.zhihu_search_query_param or "Query",
+        "queryParamConfigured": _env_is_configured("ZHIHU_SEARCH_QUERY_PARAM"),
+        "countParam": settings.zhihu_search_count_param or "Count",
+        "countParamConfigured": _env_is_configured("ZHIHU_SEARCH_COUNT_PARAM"),
+        "timeoutSeconds": settings.zhihu_timeout_seconds,
+        "timeoutConfigured": _env_is_configured("ZHIHU_TIMEOUT_SECONDS"),
+    }
+
+
+def _env_is_configured(name: str) -> bool:
+    return bool(os.getenv(name, "").strip())
+
+
+def _short_debug_error(message: str, limit: int = 180) -> str:
+    clean = str(message or "").replace("\n", "\\n").strip()
+    return clean if len(clean) <= limit else f"{clean[:limit]}..."
 
 
 def _build_search_recall_debug(

@@ -161,6 +161,8 @@ class DebugInfo(BaseModel):
     droppedPaths: list[dict[str, Any]] = Field(default_factory=list)
     errors: list[dict[str, Any]] = Field(default_factory=list)
     performanceDebug: dict[str, Any] = Field(default_factory=dict)
+    zhihuEnvDebug: dict[str, Any] = Field(default_factory=dict)
+    zhihuSearchDebug: list[dict[str, Any]] = Field(default_factory=list)
     pathGenerationMode: str = ""
     llmClusterDebugEnabled: bool = False
     llmClusterInputPeopleCount: int = 0

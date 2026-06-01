@@ -9,7 +9,16 @@ from app.config import settings
 
 
 class ZhihuClientError(RuntimeError):
-    pass
+    def __init__(
+        self,
+        message: str,
+        *,
+        error_type: str = "zhihu_error",
+        status_code: int = 0,
+    ) -> None:
+        super().__init__(message)
+        self.error_type = error_type
+        self.status_code = status_code
 
 
 class ZhihuClient:
@@ -32,9 +41,15 @@ class ZhihuClient:
         if not clean_keyword:
             return []
         if not self.access_secret:
-            raise ZhihuClientError("Zhihu access secret is not configured")
+            raise ZhihuClientError(
+                "Zhihu access secret is not configured",
+                error_type="env_missing",
+            )
         if not self.search_url:
-            raise ZhihuClientError("Zhihu search URL is not configured")
+            raise ZhihuClientError(
+                "Zhihu search URL is not configured",
+                error_type="env_missing",
+            )
 
         safe_count = max(1, min(int(count), 10))
         params = {
@@ -56,23 +71,35 @@ class ZhihuClient:
                     params=params,
                     headers=headers,
                 )
+            except httpx.TimeoutException as exc:
+                raise ZhihuClientError(
+                    f"Zhihu search request timed out: keyword={clean_keyword!r}",
+                    error_type="timeout",
+                ) from exc
             except httpx.HTTPError as exc:
                 raise ZhihuClientError(
-                    f"Zhihu search request failed: keyword={clean_keyword!r}, error={exc}"
+                    f"Zhihu search request failed: keyword={clean_keyword!r}, error={type(exc).__name__}",
+                    error_type="network_error",
                 ) from exc
 
         print(f"[zhihu.search] status={response.status_code}")
 
         if response.status_code != 200:
             raise ZhihuClientError(
-                f"Zhihu search HTTP failed: status={response.status_code}, body={response.text[:500]}"
+                "Zhihu search HTTP failed: "
+                f"status={response.status_code}, body={_safe_excerpt(response.text)}",
+                error_type=_http_error_type(response.status_code),
+                status_code=response.status_code,
             )
 
         try:
             payload = response.json()
         except ValueError as exc:
             raise ZhihuClientError(
-                f"Zhihu search returned non-JSON response: status={response.status_code}, body={response.text[:500]}"
+                "Zhihu search returned non-JSON response: "
+                f"status={response.status_code}, body={_safe_excerpt(response.text)}",
+                error_type="non_json_response",
+                status_code=response.status_code,
             ) from exc
 
         code = payload.get("Code")
@@ -81,7 +108,9 @@ class ZhihuClient:
             reason = _zhihu_error_reason(code)
             suffix = f", reason={reason}" if reason else ""
             raise ZhihuClientError(
-                f"Zhihu search API failed: code={code}, message={message}{suffix}"
+                f"Zhihu search API failed: code={code}, message={_safe_excerpt(message)}{suffix}",
+                error_type="api_error",
+                status_code=response.status_code,
             )
 
         results = normalize_zhihu_search_response(payload)
@@ -139,6 +168,23 @@ def _zhihu_error_reason(code: Any) -> str:
         30001: "频率限制",
         90001: "内部错误",
     }.get(code, "")
+
+
+def _http_error_type(status_code: int) -> str:
+    if status_code in {401, 403}:
+        return "auth_error"
+    if status_code == 404:
+        return "not_found"
+    if status_code == 429:
+        return "rate_limited"
+    if 500 <= status_code <= 599:
+        return "upstream_error"
+    return "http_error"
+
+
+def _safe_excerpt(value: Any, limit: int = 180) -> str:
+    text = str(value or "").replace("\n", "\\n")
+    return text if len(text) <= limit else f"{text[:limit]}..."
 
 
 def _text(value: Any) -> str:
