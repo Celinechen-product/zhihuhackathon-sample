@@ -3,8 +3,15 @@ from __future__ import annotations
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.schemas import ClarifyRequest, ClarifyResponse, SearchResponse
+from app.schemas import (
+    ClarifyRequest,
+    ClarifyResponse,
+    PersonaChatRequest,
+    PersonaChatResponse,
+    SearchResponse,
+)
 from app.services.clarification import build_clarification
+from app.services.persona_chat import answer_persona_chat
 from app.services.search_pipeline import search_life_samples
 
 
@@ -32,6 +39,11 @@ async def health() -> dict[str, str]:
 @app.post("/api/query/clarify", response_model=ClarifyResponse)
 async def clarify_query(payload: ClarifyRequest) -> ClarifyResponse:
     return build_clarification(payload.query, payload.clarification)
+
+
+@app.post("/api/personas/chat", response_model=PersonaChatResponse)
+async def persona_chat(payload: PersonaChatRequest) -> PersonaChatResponse:
+    return await answer_persona_chat(payload)
 
 
 @app.get("/api/search", response_model=SearchResponse)

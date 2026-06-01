@@ -578,6 +578,16 @@
       background: rgba(255, 241, 199, 0.22);
     }
 
+    .secondary:disabled,
+    .text-button:disabled {
+      color: rgba(111, 104, 95, 0.48);
+      border-color: rgba(111, 104, 95, 0.14);
+      background: rgba(255, 255, 255, 0.28);
+      cursor: not-allowed;
+      transform: none;
+      filter: none;
+    }
+
     .action-row {
       display: flex;
       justify-content: center;
@@ -2411,7 +2421,7 @@
       position: relative;
       z-index: 10;
       display: grid;
-      grid-template-columns: 300px minmax(0, 1fr);
+      grid-template-columns: 318px minmax(0, 1fr);
       gap: 22px;
       width: min(1180px, 100%);
       margin: 18px auto 0;
@@ -3148,6 +3158,8 @@
     const peepBase = "assets/mirofish-character-svgs/";
     const crowdPeepIds = [2, 4, 7, 11, 15, 21, 24, 31, 36, 42, 48, 55, 59, 66, 72, 78, 84, 90, 96, 101, 105];
     const queryPrompts = [
+      "30岁裸辞后怎么办",
+      "出来工作后，父母要求给他们钱怎么办",
       "不工作之后，我想去新西兰生活"
     ];
     const AUTH_LOGIN_URL = "http://127.0.0.1:8000/auth/zhihu/login";
@@ -3780,7 +3792,8 @@
       const sourceExcerpt = textOf(item.sourceExcerpt || item.source_excerpt || item.rawContentPreview || item.raw_content_preview || source.excerpt || item.excerpt || item.keyExperience || item.key_experience || "");
       const situation = textOf(item.situation || item.who || item.bio || item.intro || item.profile || item.description || item.authorSummary || "");
       const actionSummary = textOf(item.actionSummary || item.action_summary || item.oneLine || item.one_line || item.summary || item.cardSummary || item.card_summary || item.badge || "");
-      const realDetails = toArray(item.realDetails || item.real_details || item.key_fragments || item.keyFragments).map((detail) => textOf(detail)).filter(Boolean).slice(0, 5);
+      const keyFragments = toArray(item.key_fragments || item.keyFragments || source.key_fragments || source.keyFragments).map((detail) => textOf(detail)).filter(Boolean).slice(0, 6);
+      const realDetails = toArray(item.realDetails || item.real_details || keyFragments).map((detail) => textOf(detail)).filter(Boolean).slice(0, 5);
       const currentStatus = textOf(item.currentStatus || item.current_status || "");
       const entrySituation = textOf(item.entrySituation || item.entry_situation || situation);
       const entryStatus = textOf(item.entryStatus || item.entry_status || currentStatus);
@@ -3810,6 +3823,8 @@
         situation,
         actionSummary,
         realDetails,
+        key_fragments: keyFragments,
+        keyFragments,
         currentStatus,
         entrySituation,
         entryStatus,
@@ -3950,6 +3965,7 @@
         situation: person.situation,
         actionSummary: person.actionSummary,
         realDetails: toArray(person.realDetails).slice(0, 5),
+        key_fragments: getPersonKeyFragments(person),
         currentStatus: person.currentStatus,
         entrySituation: person.entrySituation,
         entryStatus: person.entryStatus,
@@ -4036,6 +4052,36 @@
       } catch (error) {
         console.warn("Saved library persist failed.", error);
       }
+    }
+
+    function normalizeSaveMatchUrl(value) {
+      return textOf(value).trim().replace(/\/+$/, "");
+    }
+
+    function getSavedSampleSourceUrl(sample = {}) {
+      return normalizeSaveMatchUrl(sample.person?.source?.url || sample.person?.sourceUrl || sample.person?.source_url || sample.source?.url || sample.sourceUrl || "");
+    }
+
+    function isSavedSampleForPerson(sample, person) {
+      if (!sample || !person?.id) return false;
+      const personSourceUrl = normalizeSaveMatchUrl(getPersonSourceUrl(person));
+      const sampleSourceUrl = getSavedSampleSourceUrl(sample);
+      if (personSourceUrl && sampleSourceUrl) return personSourceUrl === sampleSourceUrl;
+      return sample.personId === person.id || sample.person?.id === person.id;
+    }
+
+    function findSavedSampleForPerson(person) {
+      if (!person?.id) return null;
+      for (const group of state.savedQuestionGroups || []) {
+        for (const sample of toArray(group.samples)) {
+          if (isSavedSampleForPerson(sample, person)) return sample;
+        }
+      }
+      return null;
+    }
+
+    function isPersonSaved(person) {
+      return Boolean(findSavedSampleForPerson(person));
     }
 
     function normalizeSavedPersonFromSample(sample, index = 0) {
@@ -5025,6 +5071,8 @@
         person.situation,
         person.actionSummary,
         person.currentStatus,
+        person.entrySituation,
+        person.entryStatus,
         getPersonSourceTitle(person),
         getPersonSourceExcerpt(person),
         ...toArray(person.realDetails),
@@ -5047,6 +5095,8 @@
         realDetails: toArray(person.realDetails).map((item) => textOf(item)).filter(Boolean).slice(0, 5),
         key_fragments: getPersonKeyFragments(person),
         currentStatus: textOf(person.currentStatus),
+        entrySituation: textOf(person.entrySituation || person.entry_situation),
+        entryStatus: textOf(person.entryStatus || person.entry_status),
         sourceTitle: getPersonSourceTitle(person),
         sourceUrl: getPersonSourceUrl(person),
         sourceExcerpt: getPersonSourceExcerpt(person),
@@ -5084,6 +5134,7 @@
       const currentStatus = textOf(person.currentStatus || "");
       const hasSourceExperience = Boolean(sourceTitle || sourceUrl);
       const canAskPublicContent = hasPersonaChatPublicContent(person);
+      const saved = isPersonSaved(person);
       return `
         <article class="person-card has-peep">
           <div class="person-card-body">
@@ -5120,8 +5171,8 @@
             ` : ""}
           </div>
           <div class="card-actions">
-            <button class="primary" type="button" data-action="ask-person" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>向 TA 提问</button>
-            <button class="text-button" type="button" data-action="save-person">存入我的样本库</button>
+            <button class="primary" type="button" data-action="ask-person" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>问问 TA 的 AI 分身</button>
+            <button class="text-button" type="button" data-action="save-person" ${saved ? `disabled aria-disabled="true"` : ""}>${saved ? "已存入样本库" : "存入我的样本库"}</button>
           </div>
         </article>
       `;
@@ -5146,7 +5197,7 @@
             <div class="reader-body">${body.map((p) => `<p>${escapeHtml(p)}</p>`).join("")}</div>
           </div>
           <div class="reader-actions">
-            <button class="primary" type="button" data-action="question-from-reader" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>基于公开内容提问</button>
+            <button class="primary" type="button" data-action="question-from-reader" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>问问 TA 的 AI 分身</button>
             <button class="skip-ask-button reader-close" type="button" data-action="close-reader">收起原文</button>
           </div>
         </article>
@@ -5158,7 +5209,7 @@
       return `
         <article class="inline-ask-panel">
           <div class="ask-panel-head">
-            <span class="panel-kicker">向 TA 提问</span>
+            <span class="panel-kicker">问问 TA 的 AI 分身</span>
           </div>
           <textarea class="inline-question-text" id="inlineQuestionText">${escapeHtml(state.questionText)}</textarea>
           <div class="ask-panel-actions">
@@ -5173,6 +5224,7 @@
     function renderChat() {
       const person = getPerson();
       const canAskPublicContent = hasPersonaChatPublicContent(person);
+      const saved = isPersonSaved(person);
       return `
         <section class="screen">
           <div class="chat-layout">
@@ -5187,7 +5239,7 @@
               <div class="disclaimer">这是基于${person.name}公开内容生成的经验问答，用来帮你理解 TA 曾经分享过的经历。它不代表本人实时观点，也不代表本人授权回复。</div>
               <div class="action-row" style="justify-content:flex-start">
                 <button class="secondary" type="button" data-action="samples">返回人物卡</button>
-                <button class="secondary" type="button" data-action="save-person">存入样本库</button>
+                <button class="secondary" type="button" data-action="save-person" ${saved ? `disabled aria-disabled="true"` : ""}>${saved ? "已存入样本库" : "存入样本库"}</button>
               </div>
             </aside>
             <section class="chat-main">
@@ -5261,7 +5313,7 @@
           </div>
           <div class="saved-sample-actions">
             <button class="secondary" type="button" data-action="open-saved" data-id="${person.id}" data-sample-id="${escapeHtml(sample.sampleId || "")}">回看 TA 的经历</button>
-            <button class="text-button" type="button" data-action="open-saved-chat" data-id="${person.id}" data-sample-id="${escapeHtml(sample.sampleId || "")}">继续问公开内容</button>
+            <button class="text-button" type="button" data-action="open-saved-chat" data-id="${person.id}" data-sample-id="${escapeHtml(sample.sampleId || "")}">问问 TA 的 AI 分身</button>
           </div>
         </article>
       `;
@@ -5437,6 +5489,10 @@
         showToast("Demo 样本不会存入我的样本库");
         return;
       }
+      if (isPersonSaved(person)) {
+        showToast("已在我的样本库中");
+        return;
+      }
       if (!state.savedQuestionGroups) state.savedQuestionGroups = [];
       const now = Date.now();
       let group = state.savedQuestionGroups.find((item) => item.question === question);
@@ -5452,7 +5508,7 @@
       }
       const savedPerson = serializePersonForLibrary(person);
       const savedPath = serializePathForLibrary(getPath(person.pathId));
-      const existingSample = group.samples.find((item) => item.personId === person.id);
+      const existingSample = group.samples.find((item) => isSavedSampleForPerson(item, person));
       if (!existingSample) {
         group.samples.unshift({
           sampleId: `s_${now}_${slugify(person.id, "person")}`,
@@ -5479,6 +5535,9 @@
         setTimeout(() => libraryButton.classList.remove("is-bouncing"), 700);
       }
       showToast("已存入我的样本库");
+      if (state.page === "chat") render();
+      else if (isSampleWallActive()) syncSampleView();
+      else render();
     }
 
     function showToast(text) {
@@ -5497,7 +5556,7 @@
       if (!question || state.aiTyping) return;
       const person = getPerson();
       if (!hasPersonaChatPublicContent(person)) {
-        state.chatDraft = question;
+        state.chatDraft = "";
         showToast(PERSONA_CHAT_INSUFFICIENT_MESSAGE);
         if (state.page === "chat") render();
         return;
@@ -5515,7 +5574,7 @@
         state.chatDraft = "";
       } catch (error) {
         console.warn("Persona chat API unavailable.", error);
-        state.chatDraft = question;
+        state.chatDraft = "";
         state.messages.push({ role: "ai", text: PERSONA_CHAT_FAILURE_MESSAGE });
       }
       state.aiTyping = false;

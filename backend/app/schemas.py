@@ -60,6 +60,39 @@ class Source(BaseModel):
     excerpt: str = ""
 
 
+class PersonaChatSource(BaseModel):
+    title: str = ""
+    url: str = ""
+    excerpt: str = ""
+
+
+class PersonaChatPerson(BaseModel):
+    name: str = ""
+    situation: str = ""
+    actionSummary: str = ""
+    realDetails: list[str] = Field(default_factory=list)
+    key_fragments: list[str] = Field(default_factory=list)
+    currentStatus: str = ""
+    entrySituation: str = ""
+    entryStatus: str = ""
+    source: PersonaChatSource = Field(default_factory=PersonaChatSource)
+
+
+class PersonaChatRequest(BaseModel):
+    personId: str = ""
+    question: str = ""
+    query: str = ""
+    queryId: str = ""
+    person: PersonaChatPerson = Field(default_factory=PersonaChatPerson)
+
+
+class PersonaChatResponse(BaseModel):
+    answer: str
+    basedOnPublicContent: bool = True
+    sourceUrl: str = ""
+    insufficientContext: bool = False
+
+
 class Person(BaseModel):
     id: str
     sample_type: str = ""
