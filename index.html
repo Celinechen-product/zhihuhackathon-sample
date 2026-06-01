@@ -5175,7 +5175,7 @@
             ` : ""}
           </div>
           <div class="card-actions">
-            <button class="primary" type="button" data-action="ask-person" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>问问 TA 的 AI 分身</button>
+            <button class="primary" type="button" data-action="ask-person" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>向TA提问</button>
             <button class="text-button" type="button" data-action="save-person" ${saved ? `disabled aria-disabled="true"` : ""}>${saved ? "已存入样本库" : "存入我的样本库"}</button>
           </div>
         </article>
@@ -5201,7 +5201,7 @@
             <div class="reader-body">${body.map((p) => `<p>${escapeHtml(p)}</p>`).join("")}</div>
           </div>
           <div class="reader-actions">
-            <button class="primary" type="button" data-action="question-from-reader" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>问问 TA 的 AI 分身</button>
+            <button class="primary" type="button" data-action="question-from-reader" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>向TA提问</button>
             <button class="skip-ask-button reader-close" type="button" data-action="close-reader">收起原文</button>
           </div>
         </article>
@@ -5213,11 +5213,11 @@
       return `
         <article class="inline-ask-panel">
           <div class="ask-panel-head">
-            <span class="panel-kicker">问问 TA 的 AI 分身</span>
+            <span class="panel-kicker">向TA提问</span>
           </div>
           <textarea class="inline-question-text" id="inlineQuestionText">${escapeHtml(state.questionText)}</textarea>
           <div class="ask-panel-actions">
-            <button class="primary" type="button" data-action="chat-from-inline-ask" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>问问 TA 的 AI 分身</button>
+            <button class="primary" type="button" data-action="chat-from-inline-ask" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>向TA提问</button>
             <button class="text-button is-disabled-like" type="button" data-action="mock-dm-from-inline-ask" aria-disabled="true">递给 TA 本人（暂不可用）</button>
             <button class="skip-ask-button" type="button" data-action="close-inline-ask">先不问，我再看看</button>
           </div>
@@ -5317,7 +5317,7 @@
           </div>
           <div class="saved-sample-actions">
             <button class="secondary" type="button" data-action="open-saved" data-id="${person.id}" data-sample-id="${escapeHtml(sample.sampleId || "")}">回看 TA 的经历</button>
-            <button class="text-button" type="button" data-action="open-saved-chat" data-id="${person.id}" data-sample-id="${escapeHtml(sample.sampleId || "")}">问问 TA 的 AI 分身</button>
+            <button class="text-button" type="button" data-action="open-saved-chat" data-id="${person.id}" data-sample-id="${escapeHtml(sample.sampleId || "")}">向TA提问</button>
           </div>
         </article>
       `;
