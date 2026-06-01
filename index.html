@@ -5217,7 +5217,7 @@
           </div>
           <textarea class="inline-question-text" id="inlineQuestionText">${escapeHtml(state.questionText)}</textarea>
           <div class="ask-panel-actions">
-            <button class="primary" type="button" data-action="chat-from-inline-ask" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>向TA提问</button>
+            <button class="primary" type="button" data-action="chat-from-inline-ask" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>问问TA的AI分身</button>
             <button class="text-button is-disabled-like" type="button" data-action="mock-dm-from-inline-ask" aria-disabled="true">递给 TA 本人（暂不可用）</button>
             <button class="skip-ask-button" type="button" data-action="close-inline-ask">先不问，我再看看</button>
           </div>
