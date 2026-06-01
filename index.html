@@ -1585,9 +1585,11 @@
       z-index: 4;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start;
+      width: 100%;
       height: 100%;
       min-height: 0;
+      padding-top: 8px;
       transition: width 420ms var(--ease), opacity 300ms ease;
     }
 
@@ -1600,12 +1602,13 @@
     }
 
     .sample-wall-kicker {
-      margin: 0 auto 18px;
+      width: 100%;
+      margin: 0 0 18px;
       color: var(--muted);
       font-size: 17px;
       line-height: 1.6;
       font-weight: 800;
-      text-align: center;
+      text-align: left;
     }
 
     .sample-wall-panel.has-selection .sample-wall-kicker {
@@ -1615,13 +1618,14 @@
 
     .sample-wall-grid {
       display: grid;
-      justify-content: center;
-      gap: 22px;
+      justify-content: start;
+      align-content: start;
+      gap: 18px;
       width: 100%;
-      max-width: 1180px;
-      max-height: min(520px, calc(100vh - 260px));
-      margin: 0 auto;
-      padding: 4px 8px 8px 4px;
+      max-width: none;
+      max-height: min(520px, calc(100vh - 250px));
+      margin: 0;
+      padding: 4px 4px 8px;
       overflow-y: auto;
       scrollbar-color: rgba(216, 154, 69, 0.34) transparent;
       scrollbar-width: thin;
@@ -1644,19 +1648,13 @@
       background: rgba(216, 154, 69, 0.38);
     }
 
-    .sample-wall-grid.count-1 {
-      grid-template-columns: minmax(420px, 620px);
-    }
-
-    .sample-wall-grid.count-2 {
-      grid-template-columns: repeat(2, minmax(360px, 1fr));
-    }
-
+    .sample-wall-grid.count-1,
+    .sample-wall-grid.count-2,
     .sample-wall-grid.count-3,
     .sample-wall-grid.count-4,
     .sample-wall-grid.count-5,
     .sample-wall-grid.count-6 {
-      grid-template-columns: repeat(2, minmax(360px, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .sample-wall-panel.has-selection .sample-wall-grid {
@@ -1672,6 +1670,7 @@
       grid-template-columns: 112px minmax(0, 1fr);
       align-items: center;
       gap: 22px;
+      width: 100%;
       min-height: 170px;
       padding: 22px 54px 22px 22px;
       border: 1px solid rgba(216, 154, 69, 0.18);
@@ -1846,9 +1845,14 @@
         padding-bottom: 24px;
       }
 
-      .sample-wall-panel.has-selection .sample-wall-grid,
       .sample-wall-grid.count-5,
       .sample-wall-grid.count-6 {
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+        max-width: none;
+        max-height: 430px;
+      }
+
+      .sample-wall-panel.has-selection .sample-wall-grid {
         grid-template-columns: repeat(2, minmax(220px, 1fr));
         max-width: 720px;
         max-height: 430px;
@@ -2314,6 +2318,16 @@
       transform: translateY(-1px);
     }
 
+    .text-button.is-disabled-like {
+      color: rgba(111, 104, 95, 0.48);
+      cursor: not-allowed;
+    }
+
+    .text-button.is-disabled-like:hover {
+      color: rgba(111, 104, 95, 0.58);
+      transform: none;
+    }
+
     .inline-reader h2 {
       max-width: 760px;
       font-size: 38px;
@@ -2533,14 +2547,23 @@
       border-top: 1px solid var(--line);
     }
 
-    .chat-input input {
-      min-height: 46px;
+    .chat-input textarea {
+      min-height: 48px;
+      max-height: 138px;
       border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 0 16px;
+      border-radius: 18px;
+      padding: 12px 16px;
       color: var(--text);
       background: rgba(255, 255, 255, 0.82);
       outline: 0;
+      resize: none;
+      font: inherit;
+      line-height: 1.5;
+    }
+
+    .chat-input textarea:focus {
+      border-color: rgba(216, 154, 69, 0.36);
+      box-shadow: 0 0 0 4px rgba(216, 154, 69, 0.1);
     }
 
     .library-groups {
@@ -3167,6 +3190,9 @@
       useMockFallback: false,
       useMockUserFallback: true
     };
+    const PERSONA_CHAT_FAILURE_MESSAGE = "这次没有成功基于公开内容生成回答，可以稍后再试。";
+    const PERSONA_CHAT_INSUFFICIENT_MESSAGE = "这位样本的公开内容不足，暂时不能继续追问。";
+    const PERSONA_CHAT_MISSING_INFO_MESSAGE = "TA 的公开内容里没有提到这一点。";
     const STORAGE_KEYS = {
       savedQuestionGroups: "life-path.savedQuestionGroups.v1"
     };
@@ -3544,6 +3570,7 @@
       readerOpen: false,
       readerArticleIndex: 0,
       queryId: null,
+      queryType: "",
       analysisSteps: defaultAnalysisSteps("不工作之后，我想去新西兰生活"),
       loadingSteps: [],
       focusTags: ["身份周期", "现金流", "工作边界", "回流代价"],
@@ -3563,6 +3590,7 @@
       isCheckingClarification: false,
       questionText: defaultQuestionText(),
       messages: [],
+      chatDraft: "",
       aiTyping: false,
       askPanelOpen: false
     };
@@ -3590,17 +3618,61 @@
 
     let loadingTimers = [];
     let spotlightTimer = null;
-    let chatReplyTimer = null;
     let homePromptTimer = null;
     const app = document.getElementById("app");
     const toastRoot = document.getElementById("toastRoot");
 
     function defaultQuestionText() {
-      return "你好，我看到你也经历过从暂停工作到去新西兰生活的过程。\n\n我现在也在考虑不工作一段时间，去新西兰试试生活。但我还分不清：我是想长期迁移，还是只是想离开现在的工作状态。\n\n想请教你两个问题：\n1. 你刚到新西兰的前三个月，最大的现实落差是什么？\n2. 如果重新来一次，你会建议出发前先确认哪些事情？";
+      return "你好，我看到你曾经分享过一段相近经历。\n\n想基于这段公开分享了解两个问题：\n1. 这段经历里，最难的一步是什么？\n2. 如果重新经历一次，公开内容里有没有提到你会怎么做？";
     }
 
     function buildQuestionText(person) {
-      return `你好，我看到你曾经分享过「${person.badge || getPath(person.pathId).name}」这段经历。\n\n我现在的困惑是：${state.question}\n但我还分不清这是一条长期路径，还是一次想离开当前状态的暂停。\n\n想请教你两个问题：\n1. 你刚到新西兰的前三个月，最大的现实落差是什么？\n2. 如果重新来一次，你会建议出发前先确认哪些事情？`;
+      const entry = getPersonaQuestionEntry(person);
+      const query = state.submittedQuestion || state.question;
+      const base = `你好，我看到你曾经分享过「${entry}」这段经历。\n\n我现在的困惑是：${query}\n\n想基于这段公开分享了解`;
+      const queryType = getPersonaQuestionType(person);
+      if (queryType === "career_restart") {
+        return `${base}两个问题：\n1. 你裸辞后最先遇到的现实压力是什么？\n2. 公开内容里有没有提到，你后来是怎么判断下一步方向的？`;
+      }
+      if (queryType === "family_money") {
+        return `${base}三个问题：\n1. 你当时是怎么判断给多少钱比较合适的？\n2. 公开内容里有没有提到，你是怎么和父母沟通边界的？\n3. 后来这个给钱方式有没有调整？`;
+      }
+      if (queryType === "migration_new_zealand") {
+        return `${base}两个问题：\n1. 你去新西兰之后，最先遇到的现实落差是什么？\n2. 公开内容里有没有提到，出发前最该提前确认什么？`;
+      }
+      return `${base}两个问题：\n1. 这段经历里，最难的一步是什么？\n2. 如果重新经历一次，公开内容里有没有提到你会怎么做？`;
+    }
+
+    function getPersonaQuestionEntry(person) {
+      return textOf(
+        person.entrySituation ||
+        person.entry_situation ||
+        person.badge ||
+        person.situation ||
+        person.who ||
+        getPath(person.pathId).name ||
+        "相近处境"
+      );
+    }
+
+    function getPersonaQuestionType(person) {
+      const queryType = textOf(state.queryType).trim();
+      if (["career_restart", "family_money", "migration_new_zealand"].includes(queryType)) return queryType;
+      const query = state.submittedQuestion || state.question || "";
+      const path = getPath(person.pathId);
+      const text = [
+        query,
+        path?.name,
+        path?.desc,
+        person?.situation,
+        person?.actionSummary,
+        person?.entrySituation,
+        person?.entryStatus
+      ].map((item) => textOf(item)).join(" ");
+      if (/新西兰|奥克兰|基督城|WHV|打工度假|工签|学签|留学|移民|旅居/.test(text)) return "migration_new_zealand";
+      if (/(父母|爸爸|妈妈|家里|家庭).{0,8}(钱|生活费|转账|红包|赡养|补贴|还债|要钱|给钱)|给(父母|爸爸|妈妈|家里).{0,8}(钱|生活费|红包|补贴)|family_money/.test(text)) return "family_money";
+      if (/裸辞|辞职|离职|待业|找工作|面试|投简历|offer|职业|不上班|不工作|休整|重启|career_restart/.test(text)) return "career_restart";
+      return "general";
     }
 
     function defaultAnalysisSteps(question) {
@@ -4054,6 +4126,7 @@
         question: state.question,
         submittedQuestion: state.submittedQuestion,
         hasSubmittedQuestion: state.hasSubmittedQuestion,
+        queryType: state.queryType,
         selectedPathId: state.selectedPathId,
         selectedPersonId: state.selectedPersonId,
         selectedSavedSampleId: state.selectedSavedSampleId,
@@ -4063,6 +4136,7 @@
         askPanelOpen: state.askPanelOpen,
         questionText: state.questionText,
         messages: clonePlain(state.messages, []),
+        chatDraft: state.chatDraft,
         backendStatus: state.backendStatus,
         searchError: state.searchError
       };
@@ -4074,6 +4148,7 @@
       state.question = snapshot.question || state.question;
       state.submittedQuestion = snapshot.submittedQuestion || "";
       state.hasSubmittedQuestion = Boolean(snapshot.hasSubmittedQuestion);
+      state.queryType = snapshot.queryType || "";
       state.selectedPathId = snapshot.selectedPathId || "";
       state.selectedPersonId = snapshot.selectedPersonId || "";
       state.selectedSavedSampleId = snapshot.selectedSavedSampleId || "";
@@ -4083,6 +4158,7 @@
       state.askPanelOpen = Boolean(snapshot.askPanelOpen);
       state.questionText = snapshot.questionText || defaultQuestionText();
       state.messages = clonePlain(snapshot.messages, []);
+      state.chatDraft = snapshot.chatDraft || "";
       state.aiTyping = false;
       state.backendStatus = snapshot.backendStatus || state.backendStatus;
       state.searchError = snapshot.searchError || "";
@@ -4106,7 +4182,6 @@
         return;
       }
       clearLoadingTimers();
-      clearChatReplyTimer();
       render();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -4132,6 +4207,7 @@
 
       return {
         queryId: textOf(body.queryId || body.query_id || body.id || ""),
+        queryType: textOf(body.analysis?.question_type || body.analysis?.questionType || body.queryType || body.query_type || body.debug?.queryContext?.query_type || ""),
         query: textOf(body.query || body.question || query),
         loadingSteps: normalizeLoadingSteps(body.loadingSteps || body.loading_steps),
         analysisSteps: normalizeAnalysisSteps(body.analysis || body, query),
@@ -4184,6 +4260,7 @@
       paths = [];
       people = [];
       state.queryId = null;
+      state.queryType = "";
       state.selectedPathId = "";
       state.selectedPersonId = "";
       state.selectedSavedSampleId = "";
@@ -4192,6 +4269,7 @@
       state.readerArticleIndex = 0;
       state.askPanelOpen = false;
       state.messages = [];
+      state.chatDraft = "";
       state.aiTyping = false;
       state.searchError = "";
     }
@@ -4297,6 +4375,7 @@
       const onlyPath = paths.length === 1 ? paths[0] : null;
       const onlyPerson = people.length === 1 ? people[0] : null;
       state.queryId = data.queryId || null;
+      state.queryType = data.queryType || "";
       state.loadingSteps = data.loadingSteps.length ? data.loadingSteps : state.loadingSteps;
       state.analysisSteps = data.analysisSteps.length ? data.analysisSteps : defaultAnalysisSteps(query);
       state.focusTags = data.focusTags.length ? data.focusTags : ["身份周期", "现金流", "工作边界", "回流代价"];
@@ -4330,10 +4409,6 @@
       return textOf(person.sourceUrl || person.source?.url || "");
     }
 
-    function getPersonaReply(person) {
-      return person.lesson || person.oneLine || "我能分享的最重要经验，是先把现金流、身份周期和真实生活节奏想清楚。";
-    }
-
     function peopleForPath(pathId = state.selectedPathId) {
       const matched = people.filter((person) => person.pathId === pathId);
       const seen = new Set(matched.map((person) => person.id));
@@ -4352,7 +4427,6 @@
     function setPage(page) {
       clearLoadingTimers();
       if (page !== "chat") {
-        clearChatReplyTimer();
         state.aiTyping = false;
       }
       if (page !== "samples") {
@@ -4368,22 +4442,6 @@
     function clearLoadingTimers() {
       loadingTimers.forEach((timer) => clearTimeout(timer));
       loadingTimers = [];
-    }
-
-    function clearChatReplyTimer() {
-      if (chatReplyTimer) clearTimeout(chatReplyTimer);
-      chatReplyTimer = null;
-    }
-
-    function schedulePersonaReply(person, delay = 1600) {
-      clearChatReplyTimer();
-      state.aiTyping = true;
-      chatReplyTimer = setTimeout(() => {
-        state.aiTyping = false;
-        state.messages.push({ role: "ai", text: getPersonaReply(person) });
-        chatReplyTimer = null;
-        if (state.page === "chat") render();
-      }, delay);
     }
 
     function render() {
@@ -4954,6 +5012,69 @@
       return textOf(person.sourceExcerpt || person.source?.excerpt || article?.summary || article?.body?.[0] || person.keyExperience || "");
     }
 
+    function getPersonKeyFragments(person) {
+      return toArray(person.key_fragments || person.keyFragments || person.raw?.key_fragments || person.raw?.keyFragments || person.realDetails)
+        .map((item) => textOf(item))
+        .filter(Boolean)
+        .slice(0, 6);
+    }
+
+    function getPersonaChatPublicText(person) {
+      const parts = [
+        person.name,
+        person.situation,
+        person.actionSummary,
+        person.currentStatus,
+        getPersonSourceTitle(person),
+        getPersonSourceExcerpt(person),
+        ...toArray(person.realDetails),
+        ...getPersonKeyFragments(person)
+      ];
+      return parts.map((item) => textOf(item).trim()).filter(Boolean).join("\n");
+    }
+
+    function hasPersonaChatPublicContent(person) {
+      const sourceUrl = getPersonSourceUrl(person);
+      const compactPublicText = getPersonaChatPublicText(person).replace(/\s+/g, "");
+      return Boolean(sourceUrl && compactPublicText.length >= 30);
+    }
+
+    function buildPersonaChatPersonSnapshot(person) {
+      return {
+        name: textOf(person.name),
+        situation: textOf(person.situation || person.who),
+        actionSummary: textOf(person.actionSummary || person.oneLine),
+        realDetails: toArray(person.realDetails).map((item) => textOf(item)).filter(Boolean).slice(0, 5),
+        key_fragments: getPersonKeyFragments(person),
+        currentStatus: textOf(person.currentStatus),
+        sourceTitle: getPersonSourceTitle(person),
+        sourceUrl: getPersonSourceUrl(person),
+        sourceExcerpt: getPersonSourceExcerpt(person),
+        source: {
+          title: getPersonSourceTitle(person),
+          url: getPersonSourceUrl(person),
+          excerpt: getPersonSourceExcerpt(person)
+        }
+      };
+    }
+
+    function buildPersonaChatRequest(person, question) {
+      return {
+        queryId: state.queryId || "",
+        query: state.submittedQuestion || state.question || "",
+        personId: person.id,
+        question,
+        person: buildPersonaChatPersonSnapshot(person)
+      };
+    }
+
+    function extractPersonaChatAnswer(body = {}) {
+      const answer = textOf(body.answer || body.reply || body.content || body.message || body.messages?.at?.(-1)?.content);
+      if (answer) return answer;
+      if (body.insufficientContext || body.insufficient_context) return PERSONA_CHAT_MISSING_INFO_MESSAGE;
+      return "";
+    }
+
     function renderPersonCard(person) {
       const sourceTitle = getPersonSourceTitle(person);
       const sourceUrl = getPersonSourceUrl(person);
@@ -4962,6 +5083,7 @@
       const realDetails = toArray(person.realDetails).map((item) => textOf(item)).filter(Boolean).slice(0, 5);
       const currentStatus = textOf(person.currentStatus || "");
       const hasSourceExperience = Boolean(sourceTitle || sourceUrl);
+      const canAskPublicContent = hasPersonaChatPublicContent(person);
       return `
         <article class="person-card has-peep">
           <div class="person-card-body">
@@ -4998,7 +5120,7 @@
             ` : ""}
           </div>
           <div class="card-actions">
-            <button class="primary" type="button" data-action="ask-person">向 TA 提问</button>
+            <button class="primary" type="button" data-action="ask-person" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>向 TA 提问</button>
             <button class="text-button" type="button" data-action="save-person">存入我的样本库</button>
           </div>
         </article>
@@ -5015,6 +5137,7 @@
       const article = articles[articleIndex] || normalizeArticle({ title: `${person.name} 的公开分享`, body: person.articleBody }, 0, person);
       const body = article.body.length ? article.body : (article.summary ? [article.summary] : toArray(person.articleBody));
       const sourceUrl = article.sourceUrl || getPersonSourceUrl(person);
+      const canAskPublicContent = hasPersonaChatPublicContent(person);
       return `
         <article class="inline-reader">
           <div class="inline-reader-scroll">
@@ -5023,7 +5146,7 @@
             <div class="reader-body">${body.map((p) => `<p>${escapeHtml(p)}</p>`).join("")}</div>
           </div>
           <div class="reader-actions">
-            <button class="primary" type="button" data-action="question-from-reader">基于原文真实经历提问</button>
+            <button class="primary" type="button" data-action="question-from-reader" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>基于公开内容提问</button>
             <button class="skip-ask-button reader-close" type="button" data-action="close-reader">收起原文</button>
           </div>
         </article>
@@ -5031,6 +5154,7 @@
     }
 
     function renderInlineAskPanel(person) {
+      const canAskPublicContent = hasPersonaChatPublicContent(person);
       return `
         <article class="inline-ask-panel">
           <div class="ask-panel-head">
@@ -5038,8 +5162,8 @@
           </div>
           <textarea class="inline-question-text" id="inlineQuestionText">${escapeHtml(state.questionText)}</textarea>
           <div class="ask-panel-actions">
-            <button class="primary" type="button" data-action="chat-from-inline-ask">呼叫 TA 的 AI 分身先聊聊</button>
-            <button class="text-button" type="button" data-action="mock-dm-from-inline-ask">递给 TA 本人</button>
+            <button class="primary" type="button" data-action="chat-from-inline-ask" ${canAskPublicContent ? "" : `disabled title="${escapeHtml(PERSONA_CHAT_INSUFFICIENT_MESSAGE)}"`}>问问 TA 的 AI 分身</button>
+            <button class="text-button is-disabled-like" type="button" data-action="mock-dm-from-inline-ask" aria-disabled="true">递给 TA 本人（暂不可用）</button>
             <button class="skip-ask-button" type="button" data-action="close-inline-ask">先不问，我再看看</button>
           </div>
         </article>
@@ -5048,6 +5172,7 @@
 
     function renderChat() {
       const person = getPerson();
+      const canAskPublicContent = hasPersonaChatPublicContent(person);
       return `
         <section class="screen">
           <div class="chat-layout">
@@ -5059,22 +5184,24 @@
                   <p style="color:var(--muted);line-height:1.6">${person.role}<br>${getPath(person.pathId).name}</p>
                 </div>
               </div>
-              <div class="disclaimer">这是基于${person.name}公开内容生成的经验分身，用来帮你理解 TA 曾经分享过的经历。它不代表本人实时观点。</div>
+              <div class="disclaimer">这是基于${person.name}公开内容生成的经验问答，用来帮你理解 TA 曾经分享过的经历。它不代表本人实时观点，也不代表本人授权回复。</div>
               <div class="action-row" style="justify-content:flex-start">
                 <button class="secondary" type="button" data-action="samples">返回人物卡</button>
                 <button class="secondary" type="button" data-action="save-person">存入样本库</button>
               </div>
             </aside>
             <section class="chat-main">
-              <div class="chat-head"><h2>${person.name}的分身</h2></div>
+              <div class="chat-head">
+                <h2>TA的AI分身</h2>
+              </div>
               <div class="messages">
                 ${state.messages.map((msg) => `<div class="message ${msg.role === "user" ? "user" : "ai"}">${escapeHtml(msg.text)}</div>`).join("")}
-                ${state.aiTyping ? `<div class="message ai typing" aria-label="${person.name}的分身正在输入"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>` : ""}
+                ${state.aiTyping ? `<div class="message ai typing" aria-label="正在基于公开内容生成回答"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>` : ""}
               </div>
               <div>
                 <div class="chat-input">
-                  <input id="chatInput" placeholder="继续追问这段公开经历..." ${state.aiTyping ? "disabled" : ""} />
-                  <button class="primary" type="button" data-action="send-chat" ${state.aiTyping ? "disabled" : ""}>发送</button>
+                  <textarea id="chatInput" rows="1" placeholder="${canAskPublicContent ? "继续追问这段公开经历..." : PERSONA_CHAT_INSUFFICIENT_MESSAGE}" ${state.aiTyping || !canAskPublicContent ? "disabled" : ""}>${escapeHtml(state.chatDraft)}</textarea>
+                  <button class="primary" type="button" data-action="send-chat" ${state.aiTyping || !canAskPublicContent ? "disabled" : ""}>发送</button>
                 </div>
               </div>
             </section>
@@ -5134,7 +5261,7 @@
           </div>
           <div class="saved-sample-actions">
             <button class="secondary" type="button" data-action="open-saved" data-id="${person.id}" data-sample-id="${escapeHtml(sample.sampleId || "")}">回看 TA 的经历</button>
-            <button class="text-button" type="button" data-action="open-saved-chat" data-id="${person.id}" data-sample-id="${escapeHtml(sample.sampleId || "")}">继续问 AI 分身</button>
+            <button class="text-button" type="button" data-action="open-saved-chat" data-id="${person.id}" data-sample-id="${escapeHtml(sample.sampleId || "")}">继续问公开内容</button>
           </div>
         </article>
       `;
@@ -5208,7 +5335,12 @@
     }
 
     function openAskPanel() {
-      state.questionText = buildQuestionText(getPerson());
+      const person = getPerson();
+      if (!hasPersonaChatPublicContent(person)) {
+        showToast(PERSONA_CHAT_INSUFFICIENT_MESSAGE);
+        return;
+      }
+      state.questionText = buildQuestionText(person);
       state.askPanelOpen = true;
       state.readerOpen = false;
       if (state.page === "paths" && isSampleWallActive()) {
@@ -5361,30 +5493,30 @@
     }
 
     async function addChat(text) {
-      if (!text.trim() || state.aiTyping) return;
+      const question = text.trim();
+      if (!question || state.aiTyping) return;
       const person = getPerson();
-      state.messages.push({ role: "user", text });
-      if (window.LIFE_PATH_FORCE_MOCK) {
-        schedulePersonaReply(person);
-        render();
+      if (!hasPersonaChatPublicContent(person)) {
+        state.chatDraft = question;
+        showToast(PERSONA_CHAT_INSUFFICIENT_MESSAGE);
+        if (state.page === "chat") render();
         return;
       }
+      state.messages.push({ role: "user", text: question });
+      state.chatDraft = "";
       state.aiTyping = true;
       render();
       try {
-        await new Promise((resolve) => setTimeout(resolve, 850));
-        const response = await postJson(API_CONFIG.chatEndpoint, {
-          queryId: state.queryId,
-          query: state.question,
-          personId: person.id,
-          articleId: getPersonArticles(person)[state.readerArticleIndex]?.id || null,
-          messages: state.messages.map((message) => ({ role: message.role === "ai" ? "assistant" : message.role, content: message.text }))
-        });
+        const response = await postJson(API_CONFIG.chatEndpoint, buildPersonaChatRequest(person, question));
         const body = getResponseBody(response) || {};
-        const reply = body.reply || body.content || body.message || body.messages?.at?.(-1)?.content;
-        state.messages.push({ role: "ai", text: reply || getPersonaReply(person) });
+        const reply = extractPersonaChatAnswer(body);
+        if (!reply) throw new Error("Persona chat response did not include an answer");
+        state.messages.push({ role: "ai", text: reply });
+        state.chatDraft = "";
       } catch (error) {
-        state.messages.push({ role: "ai", text: getPersonaReply(person) });
+        console.warn("Persona chat API unavailable.", error);
+        state.chatDraft = question;
+        state.messages.push({ role: "ai", text: PERSONA_CHAT_FAILURE_MESSAGE });
       }
       state.aiTyping = false;
       render();
@@ -5411,6 +5543,27 @@
           state.clarificationShown = false;
         });
         updateInputState();
+      }
+      const chatInput = document.getElementById("chatInput");
+      if (chatInput && chatInput.dataset.boundInput !== "true") {
+        const resizeChatInput = () => {
+          chatInput.style.height = "auto";
+          chatInput.style.height = `${Math.min(chatInput.scrollHeight, 138)}px`;
+        };
+        chatInput.dataset.boundInput = "true";
+        chatInput.addEventListener("input", () => {
+          state.chatDraft = chatInput.value;
+          resizeChatInput();
+        });
+        chatInput.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" || event.shiftKey) return;
+          event.preventDefault();
+          if (state.aiTyping) return;
+          const nextText = chatInput.value.trim();
+          if (!nextText) return;
+          addChat(chatInput.value);
+        });
+        resizeChatInput();
       }
       document.querySelectorAll(".sample-person[data-action='select-person']").forEach((node) => {
         if (node.dataset.pointerBound === "true") return;
@@ -5495,20 +5648,25 @@
           }
           if (action === "mock-dm-from-inline-ask") {
             state.questionText = readInlineQuestion();
-            showToast("Demo 不发送真实提问。正式版会等待 TA 愿意接收。");
+            showToast("暂时不能真实私信 TA，可以先基于公开内容追问。");
           }
           if (action === "chat-from-inline-ask") {
             state.questionText = readInlineQuestion();
-            state.messages = [{ role: "user", text: state.questionText }];
+            if (!hasPersonaChatPublicContent(getPerson())) {
+              showToast(PERSONA_CHAT_INSUFFICIENT_MESSAGE);
+              return;
+            }
+            state.messages = [];
             state.askPanelOpen = false;
-            schedulePersonaReply(getPerson());
+            state.chatDraft = "";
             setPage("chat");
+            addChat(state.questionText);
           }
           if (action === "close-inline-ask") closeAskPanel();
           if (action === "quick-chat") addChat(target.dataset.text || "");
           if (action === "send-chat") {
             const input = document.getElementById("chatInput");
-            addChat(input ? input.value : "");
+            addChat(input ? input.value : state.chatDraft);
           }
           if (action === "save-person") savePerson(target);
           if (action === "open-saved") {
@@ -5527,6 +5685,11 @@
             state.readerOpen = false;
             state.askPanelOpen = false;
             state.messages = [];
+            state.chatDraft = "";
+            if (!hasPersonaChatPublicContent(getPerson(state.selectedPersonId))) {
+              showToast(PERSONA_CHAT_INSUFFICIENT_MESSAGE);
+              return;
+            }
             setPage("chat");
           }
           if (action === "publish-community") {
