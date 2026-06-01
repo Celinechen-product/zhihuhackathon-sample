@@ -127,6 +127,14 @@ class DebugInfo(BaseModel):
     pathRelevanceDebug: list[dict[str, Any]] = Field(default_factory=list)
     droppedPaths: list[dict[str, Any]] = Field(default_factory=list)
     errors: list[dict[str, Any]] = Field(default_factory=list)
+    performanceDebug: dict[str, Any] = Field(default_factory=dict)
+    pathGenerationMode: str = ""
+    llmClusterDebugEnabled: bool = False
+    llmClusterInputPeopleCount: int = 0
+    llmClusterPathsRaw: dict[str, Any] = Field(default_factory=dict)
+    llmClusterValidationDebug: list[dict[str, Any]] = Field(default_factory=list)
+    droppedClusterPaths: list[dict[str, Any]] = Field(default_factory=list)
+    ruleFallbackUsed: bool = False
 
 
 class SearchResponse(BaseModel):

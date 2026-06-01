@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from app.config import settings
@@ -20,6 +21,7 @@ from app.services.response_formatter import (
     build_frontend_paths,
     build_frontend_people,
     should_use_real_results,
+    sync_path_counts_with_people,
 )
 from app.services.zhihu_client import ZhihuClient, ZhihuClientError
 
@@ -29,10 +31,21 @@ async def run_search_pipeline(
     query: str,
     count: int = 20,
     clarification: str | None = None,
+    llm_path_cluster_debug: bool = False,
 ) -> dict[str, Any]:
+    total_start = time.perf_counter()
     safe_count = max(1, min(int(count), 50))
     clean_query = (query or "").strip()
     clean_clarification = (clarification or "").strip()
+    performance_debug: dict[str, Any] = {
+        "query": clean_query,
+        "requestedCount": count,
+        "safeCount": safe_count,
+        "llmPathClusterDebugEnabled": llm_path_cluster_debug,
+        "stages": [],
+        "llmExtractionRuns": [],
+    }
+    query_context_start = time.perf_counter()
     combined_query = build_combined_query(clean_query, clean_clarification)
     understanding = understand_query(clean_query, clean_clarification)
     query_context = build_query_context(
@@ -43,6 +56,14 @@ async def run_search_pipeline(
     understanding["query_context"] = query_context
     understanding["query_type"] = query_context["query_type"]
     understanding["effective_query"] = query_context["effective_query"]
+    _record_perf_stage(
+        performance_debug,
+        "query_context_and_understanding",
+        query_context_start,
+        queryType=query_context["query_type"],
+        effectiveQuery=query_context["effective_query"],
+    )
+    search_keywords_start = time.perf_counter()
     keywords = build_search_keywords(
         clean_query,
         clean_clarification,
@@ -50,6 +71,13 @@ async def run_search_pipeline(
         query_context=query_context,
     )
     understanding["search_keywords"] = keywords
+    _record_perf_stage(
+        performance_debug,
+        "search_keywords_generation",
+        search_keywords_start,
+        keywordCount=len(keywords),
+        keywords=keywords,
+    )
 
     raw_results: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
@@ -59,6 +87,7 @@ async def run_search_pipeline(
 
     planned_search_keywords = keywords[:5]
     if should_try_zhihu:
+        zhihu_search_start = time.perf_counter()
         raw_results = await _search_zhihu_keywords(
             planned_search_keywords,
             max_results=safe_count,
@@ -66,41 +95,111 @@ async def run_search_pipeline(
             execution_debug=search_execution_debug,
             phase="primary",
         )
+        _record_perf_stage(
+            performance_debug,
+            "zhihu_search_total",
+            zhihu_search_start,
+            phase="primary",
+            keywordCount=len(planned_search_keywords),
+            rawResultsCount=len(raw_results),
+        )
     else:
+        zhihu_search_start = time.perf_counter()
         if not settings.has_zhihu_access_secret:
             errors.append(
                 {"keyword": "", "error": "Zhihu access secret is not configured"}
             )
         if not settings.has_zhihu_search_url:
             errors.append({"keyword": "", "error": "Zhihu search URL is not configured"})
+        _record_perf_stage(
+            performance_debug,
+            "zhihu_search_total",
+            zhihu_search_start,
+            phase="primary",
+            skipped=True,
+            rawResultsCount=0,
+        )
 
+    raw_dedupe_start = time.perf_counter()
     deduped_results = _dedupe_results(raw_results)[:safe_count]
+    _record_perf_stage(
+        performance_debug,
+        "raw_results_dedupe",
+        raw_dedupe_start,
+        rawResultsCount=len(raw_results),
+        dedupedResultsCount=len(deduped_results),
+    )
+    candidate_filter_start = time.perf_counter()
     experience_candidates = filter_experience_candidates(
         raw_results=deduped_results,
         query=query_context["effective_query"],
         understanding=understanding,
+    )
+    _record_perf_stage(
+        performance_debug,
+        "experience_candidate_filter",
+        candidate_filter_start,
+        candidateCount=len(experience_candidates),
     )
     llm_input_results = (
         _attach_raw_results_for_llm(experience_candidates, deduped_results)
         if experience_candidates
         else deduped_results[:5]
     )
+    llm_extraction_timings: list[dict[str, Any]] = []
+    llm_extraction_start = time.perf_counter()
     llm_people_draft, llm_errors = await extract_people_with_llm(
         query=clean_query,
         clarification=clean_clarification,
         raw_results=llm_input_results,
         limit=8,
         query_context=query_context,
+        timing_debug=llm_extraction_timings,
     )
+    llm_extraction_elapsed = _record_perf_stage(
+        performance_debug,
+        "llm_extraction_total",
+        llm_extraction_start,
+        phase="primary",
+        inputCount=len(llm_input_results),
+        draftPeopleCount=len(llm_people_draft),
+        errorCount=len(llm_errors),
+    )
+    _append_llm_extraction_run(
+        performance_debug,
+        phase="primary",
+        elapsed_ms=llm_extraction_elapsed,
+        input_count=len(llm_input_results),
+        draft_people_count=len(llm_people_draft),
+        error_count=len(llm_errors),
+        item_timings=llm_extraction_timings,
+    )
+    rule_extraction_start = time.perf_counter()
     people_draft = extract_people_draft(
         candidates=experience_candidates,
         query=query_context["effective_query"],
         understanding=understanding,
     )
+    _record_perf_stage(
+        performance_debug,
+        "rule_experience_extraction",
+        rule_extraction_start,
+        phase="primary",
+        peopleDraftCount=len(people_draft),
+    )
+    rule_path_assignment_start = time.perf_counter()
     paths_draft, people_draft_with_path = cluster_people_drafts(
         people_draft=people_draft,
         query=clean_query,
         understanding=understanding,
+    )
+    _record_perf_stage(
+        performance_debug,
+        "rule_based_path_assignment",
+        rule_path_assignment_start,
+        phase="primary",
+        pathsDraftCount=len(paths_draft),
+        peopleDraftWithPathCount=len(people_draft_with_path),
     )
     paths: list[dict[str, Any]] | None = None
     people: list[dict[str, Any]] | None = None
@@ -142,6 +241,7 @@ async def run_search_pipeline(
     search_fallback_used = False
     fallback_keywords: list[str] = []
     fallback_raw_results_count = 0
+    formal_filter_start = time.perf_counter()
     (
         llm_paths,
         llm_people,
@@ -155,6 +255,16 @@ async def run_search_pipeline(
         clarification=clean_clarification,
         query_context=query_context,
     )
+    _record_perf_stage(
+        performance_debug,
+        "formal_valid_people_filter",
+        formal_filter_start,
+        phase="primary",
+        llmDraftPeopleCount=len(llm_people_draft),
+        validPeopleCount=len(llm_people),
+        pathCount=len(llm_paths),
+        pathAssignmentDebugCount=len(llm_path_assignment_debug),
+    )
     if (
         deduped_results
         and not (paths and people)
@@ -167,6 +277,7 @@ async def run_search_pipeline(
         )
         if fallback_keywords:
             search_fallback_used = True
+            fallback_search_start = time.perf_counter()
             fallback_raw_results = await _search_zhihu_keywords(
                 fallback_keywords,
                 max_results=12,
@@ -174,39 +285,102 @@ async def run_search_pipeline(
                 execution_debug=search_execution_debug,
                 phase="fallback",
             )
+            _record_perf_stage(
+                performance_debug,
+                "zhihu_search_total",
+                fallback_search_start,
+                phase="fallback",
+                keywordCount=len(fallback_keywords),
+                rawResultsCount=len(fallback_raw_results),
+            )
             fallback_raw_results_count = len(fallback_raw_results)
             if fallback_raw_results:
                 raw_results.extend(fallback_raw_results)
+                fallback_dedupe_start = time.perf_counter()
                 deduped_results = _dedupe_results(raw_results)[
                     : max(safe_count, min(50, safe_count + fallback_raw_results_count))
                 ]
+                _record_perf_stage(
+                    performance_debug,
+                    "raw_results_dedupe",
+                    fallback_dedupe_start,
+                    phase="fallback",
+                    rawResultsCount=len(raw_results),
+                    dedupedResultsCount=len(deduped_results),
+                )
+                fallback_candidate_filter_start = time.perf_counter()
                 experience_candidates = filter_experience_candidates(
                     raw_results=deduped_results,
                     query=query_context["effective_query"],
                     understanding=understanding,
+                )
+                _record_perf_stage(
+                    performance_debug,
+                    "experience_candidate_filter",
+                    fallback_candidate_filter_start,
+                    phase="fallback",
+                    candidateCount=len(experience_candidates),
                 )
                 llm_input_results = (
                     _attach_raw_results_for_llm(experience_candidates, deduped_results)
                     if experience_candidates
                     else deduped_results[:8]
                 )
+                fallback_llm_extraction_timings: list[dict[str, Any]] = []
+                fallback_llm_extraction_start = time.perf_counter()
                 llm_people_draft, fallback_llm_errors = await extract_people_with_llm(
                     query=clean_query,
                     clarification=clean_clarification,
                     raw_results=llm_input_results,
                     limit=8,
                     query_context=query_context,
+                    timing_debug=fallback_llm_extraction_timings,
+                )
+                fallback_llm_extraction_elapsed = _record_perf_stage(
+                    performance_debug,
+                    "llm_extraction_total",
+                    fallback_llm_extraction_start,
+                    phase="fallback",
+                    inputCount=len(llm_input_results),
+                    draftPeopleCount=len(llm_people_draft),
+                    errorCount=len(fallback_llm_errors),
+                )
+                _append_llm_extraction_run(
+                    performance_debug,
+                    phase="fallback",
+                    elapsed_ms=fallback_llm_extraction_elapsed,
+                    input_count=len(llm_input_results),
+                    draft_people_count=len(llm_people_draft),
+                    error_count=len(fallback_llm_errors),
+                    item_timings=fallback_llm_extraction_timings,
                 )
                 llm_errors.extend(fallback_llm_errors)
+                fallback_rule_extraction_start = time.perf_counter()
                 people_draft = extract_people_draft(
                     candidates=experience_candidates,
                     query=query_context["effective_query"],
                     understanding=understanding,
                 )
+                _record_perf_stage(
+                    performance_debug,
+                    "rule_experience_extraction",
+                    fallback_rule_extraction_start,
+                    phase="fallback",
+                    peopleDraftCount=len(people_draft),
+                )
+                fallback_rule_path_assignment_start = time.perf_counter()
                 paths_draft, people_draft_with_path = cluster_people_drafts(
                     people_draft=people_draft,
                     query=clean_query,
                     understanding=understanding,
+                )
+                _record_perf_stage(
+                    performance_debug,
+                    "rule_based_path_assignment",
+                    fallback_rule_path_assignment_start,
+                    phase="fallback",
+                    pathsDraftCount=len(paths_draft),
+                    peopleDraftWithPathCount=len(people_draft_with_path),
                 )
                 paths = None
                 people = None
@@ -239,6 +413,7 @@ async def run_search_pipeline(
                     else:
                         paths = None
                         people = None
+                fallback_formal_filter_start = time.perf_counter()
                 (
                     llm_paths,
                     llm_people,
@@ -252,6 +427,16 @@ async def run_search_pipeline(
                     clarification=clean_clarification,
                     query_context=query_context,
                 )
+                _record_perf_stage(
+                    performance_debug,
+                    "formal_valid_people_filter",
+                    fallback_formal_filter_start,
+                    phase="fallback",
+                    llmDraftPeopleCount=len(llm_people_draft),
+                    validPeopleCount=len(llm_people),
+                    pathCount=len(llm_paths),
+                    pathAssignmentDebugCount=len(llm_path_assignment_debug),
+                )
     if llm_paths and llm_people:
         paths = llm_paths
         people = llm_people
@@ -264,15 +449,27 @@ async def run_search_pipeline(
         people = []
         if result_source == "fallback":
             result_source = "low_recall_no_valid_people"
+    paths = sync_path_counts_with_people(paths, people)
 
+    llm_cluster_start = time.perf_counter()
     llm_cluster_debug = await cluster_paths_with_llm_debug(
         query=clean_query,
         clarification=clean_clarification,
         query_context=query_context,
         people=people,
         rule_fallback_used=rule_people_fallback_used,
+        enabled=llm_path_cluster_debug,
+    )
+    _record_perf_stage(
+        performance_debug,
+        "llm_path_clustering_debug",
+        llm_cluster_start,
+        enabled=llm_path_cluster_debug,
+        peopleCount=len(people),
+        validationMessageCount=len(llm_cluster_debug.get("llmClusterValidationDebug") or []),
     )
 
+    response_formatting_start = time.perf_counter()
     response = build_fallback_response(
         query=clean_query,
         clarification=clean_clarification,
@@ -317,6 +514,23 @@ async def run_search_pipeline(
     response["debug"].setdefault("understanding", {})[
         "llmPathClusterDebug"
     ] = llm_cluster_debug
+    _record_perf_stage(
+        performance_debug,
+        "response_formatting",
+        response_formatting_start,
+        pathCount=len(paths),
+        peopleCount=len(people),
+        rawResultsCount=len(deduped_results),
+    )
+    total_elapsed_ms = _elapsed_ms(total_start)
+    performance_debug["totalElapsedMs"] = total_elapsed_ms
+    print(
+        "[search.performance] "
+        f"stage=total elapsed_ms={total_elapsed_ms} "
+        f"raw_results={len(deduped_results)} people={len(people)} paths={len(paths)} "
+        f"llm_path_cluster_debug_enabled={llm_path_cluster_debug}"
+    )
+    response["debug"]["performanceDebug"] = performance_debug
     return response
 
 
@@ -325,12 +539,80 @@ async def search_life_samples(
     query: str,
     clarification: str = "",
     count: int = 20,
+    llm_path_cluster_debug: bool = False,
 ) -> dict[str, Any]:
     return await run_search_pipeline(
         query=query,
         clarification=clarification,
         count=count,
+        llm_path_cluster_debug=llm_path_cluster_debug,
     )
+
+
+def _elapsed_ms(start: float) -> float:
+    return round((time.perf_counter() - start) * 1000, 2)
+
+
+def _record_perf_stage(
+    performance_debug: dict[str, Any],
+    stage: str,
+    start: float,
+    **fields: Any,
+) -> float:
+    elapsed_ms = _elapsed_ms(start)
+    entry = {"stage": stage, "elapsedMs": elapsed_ms, **fields}
+    performance_debug.setdefault("stages", []).append(entry)
+    _log_perf(stage, elapsed_ms, **fields)
+    return elapsed_ms
+
+
+def _append_llm_extraction_run(
+    performance_debug: dict[str, Any],
+    *,
+    phase: str,
+    elapsed_ms: float,
+    input_count: int,
+    draft_people_count: int,
+    error_count: int,
+    item_timings: list[dict[str, Any]],
+) -> None:
+    performance_debug.setdefault("llmExtractionRuns", []).append(
+        {
+            "phase": phase,
+            "elapsedMs": elapsed_ms,
+            "inputCount": input_count,
+            "draftPeopleCount": draft_people_count,
+            "errorCount": error_count,
+            "itemTimings": sorted(
+                item_timings,
+                key=lambda item: int(item.get("index") or 0),
+            ),
+        }
+    )
+
+
+def _log_perf(stage: str, elapsed_ms: float, **fields: Any) -> None:
+    parts = [f"stage={stage}", f"elapsed_ms={elapsed_ms}"]
+    for key, value in fields.items():
+        parts.append(f"{key}={_format_perf_value(value)}")
+    print("[search.performance] " + " ".join(parts))
+
+
+def _format_perf_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, list):
+        preview = ",".join(str(item) for item in value[:5])
+        suffix = ",..." if len(value) > 5 else ""
+        return f"[{preview}{suffix}]"
+    if isinstance(value, dict):
+        return f"dict_keys({','.join(str(key) for key in list(value)[:5])})"
+    text = str(value).replace("\n", " ").strip()
+    if len(text) > 80:
+        text = text[:77] + "..."
+    return repr(text)
 
 
 def _dedupe_results(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -384,6 +666,7 @@ async def _search_zhihu_keywords(
     results: list[dict[str, Any]] = []
     client = ZhihuClient()
     for index, keyword in enumerate(keywords):
+        keyword_start = time.perf_counter()
         before_count = len(results)
         debug_item = {
             "phase": phase,
@@ -396,10 +679,20 @@ async def _search_zhihu_keywords(
             "skipped": False,
             "skipReason": "",
             "error": "",
+            "elapsedMs": 0.0,
         }
         if len(results) >= max_results:
             debug_item["skipped"] = True
             debug_item["skipReason"] = "max_results_reached"
+            debug_item["elapsedMs"] = _elapsed_ms(keyword_start)
+            _log_perf(
+                "zhihu_keyword_search",
+                debug_item["elapsedMs"],
+                phase=phase,
+                keyword=keyword,
+                skipped=True,
+                rawResultCount=0,
+            )
             if execution_debug is not None:
                 execution_debug.append(debug_item)
             continue
@@ -428,6 +721,16 @@ async def _search_zhihu_keywords(
             errors.append({"keyword": keyword, "error": message})
             debug_item["error"] = message
             print(f"[search] {message}")
+        debug_item["elapsedMs"] = _elapsed_ms(keyword_start)
+        _log_perf(
+            "zhihu_keyword_search",
+            debug_item["elapsedMs"],
+            phase=phase,
+            keyword=keyword,
+            skipped=debug_item["skipped"],
+            rawResultCount=debug_item["rawResultCount"],
+            error=bool(debug_item["error"]),
+        )
         if execution_debug is not None:
             execution_debug.append(debug_item)
     return results

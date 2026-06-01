@@ -1126,6 +1126,32 @@ def build_frontend_paths(
     return paths
 
 
+def sync_path_counts_with_people(
+    paths: list[dict[str, Any]],
+    people: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    people_counts: Counter[str] = Counter(_text(person.get("pathId")) for person in people)
+    people_ids_by_path: dict[str, list[str]] = {}
+    for person in people:
+        path_id = _text(person.get("pathId"))
+        person_id = _text(person.get("id"))
+        if path_id and person_id:
+            people_ids_by_path.setdefault(path_id, []).append(person_id)
+
+    synced_paths: list[dict[str, Any]] = []
+    for path in paths:
+        path_id = _text(path.get("id"))
+        if not path_id:
+            synced_paths.append(path)
+            continue
+        synced_path = dict(path)
+        synced_path["count"] = people_counts[path_id]
+        if "supporting_person_ids" in synced_path:
+            synced_path["supporting_person_ids"] = people_ids_by_path.get(path_id, [])
+        synced_paths.append(synced_path)
+    return synced_paths
+
+
 def build_frontend_people(
     people_draft_with_path: list[dict[str, Any]],
     valid_path_ids: set[str] | None = None,

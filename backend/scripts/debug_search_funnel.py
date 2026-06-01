@@ -66,6 +66,7 @@ async def main() -> int:
                 query=args.query,
                 clarification=args.clarification,
                 count=args.count,
+                llm_path_cluster_debug=True,
             )
         error = ""
     except Exception as exc:

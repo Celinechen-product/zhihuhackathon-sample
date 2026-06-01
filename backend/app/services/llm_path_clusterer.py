@@ -101,12 +101,19 @@ async def cluster_paths_with_llm_debug(
     query_context: dict[str, Any] | None,
     people: list[dict[str, Any]] | None,
     rule_fallback_used: bool,
+    enabled: bool = True,
 ) -> dict[str, Any]:
     valid_people = [person for person in people or [] if _person_id(person)]
     debug = _empty_debug(
         people_count=len(valid_people),
         rule_fallback_used=rule_fallback_used,
     )
+    debug["llmClusterDebugEnabled"] = enabled
+    if not enabled:
+        debug["llmClusterValidationDebug"].append(
+            {"level": "info", "message": "skipped: disabled for request"}
+        )
+        return debug
     if not valid_people:
         debug["llmClusterValidationDebug"].append(
             {"level": "info", "message": "skipped: no valid people for path clustering"}

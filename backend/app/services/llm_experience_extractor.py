@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import re
+import time
 from math import ceil
 from typing import Any
 
@@ -49,6 +50,7 @@ async def extract_people_with_llm(
     raw_results: list[dict],
     limit: int = 8,
     query_context: dict[str, Any] | None = None,
+    timing_debug: list[dict[str, Any]] | None = None,
 ) -> tuple[list[dict], list[Any]]:
     if not settings.has_llm_config:
         return [], ["LLM config is missing"]
@@ -59,12 +61,13 @@ async def extract_people_with_llm(
 
     tasks = [
         asyncio.create_task(
-            _extract_one(
+            _extract_one_timed(
                 index=index,
                 item=item,
                 query=query,
                 clarification=clarification,
                 query_context=query_context,
+                timing_debug=timing_debug,
             )
         )
         for index, item in enumerate(items)
@@ -88,6 +91,10 @@ async def extract_people_with_llm(
 
     for task in pending:
         task.cancel()
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+
+    for task in pending:
         item = task_items[task]
         errors.append(
             {
@@ -102,6 +109,55 @@ async def extract_people_with_llm(
         person.pop("_inputIndex", None)
     errors.sort(key=lambda item: item.get("index", 0) if isinstance(item, dict) else 0)
     return people, errors
+
+
+async def _extract_one_timed(
+    *,
+    index: int,
+    item: dict[str, Any],
+    query: str,
+    clarification: str | None,
+    query_context: dict[str, Any] | None = None,
+    timing_debug: list[dict[str, Any]] | None = None,
+) -> tuple[dict[str, Any] | None, list[Any]]:
+    start = time.perf_counter()
+    status = "started"
+    try:
+        draft, errors = await _extract_one(
+            index=index,
+            item=item,
+            query=query,
+            clarification=clarification,
+            query_context=query_context,
+        )
+        if draft is not None:
+            status = "accepted"
+        elif errors:
+            status = "error"
+        else:
+            status = "rejected"
+        return draft, errors
+    except asyncio.CancelledError:
+        status = "timeout"
+        raise
+    except Exception:
+        status = "error"
+        raise
+    finally:
+        elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
+        entry = {
+            "index": index,
+            "title": item.get("title", ""),
+            "elapsedMs": elapsed_ms,
+            "status": status,
+        }
+        if timing_debug is not None:
+            timing_debug.append(entry)
+        print(
+            "[llm.extraction.performance] "
+            f"index={index} elapsed_ms={elapsed_ms} status={status} "
+            f"title={item.get('title', '')!r}"
+        )
 
 
 async def _extract_one(

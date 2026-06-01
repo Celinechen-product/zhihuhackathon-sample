@@ -3162,7 +3162,8 @@
       saveEndpoint: "/api/samples/save",
       savedEndpoint: "/api/samples/saved",
       chatEndpoint: "/api/personas/chat",
-      requestTimeoutMs: 45000,
+      requestTimeoutMs: 70000,
+      searchResultCount: 20,
       useMockFallback: false,
       useMockUserFallback: true
     };
@@ -4344,6 +4345,10 @@
       return [...matched, ...saved];
     }
 
+    function visiblePeopleForPath(pathId) {
+      return peopleForPath(pathId);
+    }
+
     function setPage(page) {
       clearLoadingTimers();
       if (page !== "chat") {
@@ -4575,7 +4580,7 @@
         } else {
           const params = new URLSearchParams();
           params.set("query", query);
-          params.set("count", "20");
+          params.set("count", String(API_CONFIG.searchResultCount));
           if (state.clarificationAnswer) {
             params.set("clarification", state.clarificationAnswer);
           }
@@ -4797,19 +4802,22 @@
     }
 
     function renderPathCards(sortedPaths) {
-      return sortedPaths.map((path, index) => `
+      return sortedPaths.map((path, index) => {
+        const visiblePeople = visiblePeopleForPath(path.id);
+        return `
         <button class="path-card ${state.pathExpanded && path.id === state.selectedPathId ? "is-current" : ""}" data-action="choose-path" data-id="${path.id}" type="button">
           <div class="path-card-header">
             <span class="path-index">${String(index + 1).padStart(2, "0")}</span>
             <h2>${escapeHtml(path.name)}</h2>
           </div>
-          <span class="path-count">${path.count} 人走过</span>
+          <span class="path-count">${visiblePeople.length} 人走过</span>
           <p class="path-desc">${escapeHtml(getDisplayPathDesc(path))}</p>
           <span class="path-card-peeps" aria-hidden="true">
-            ${pathPeople(path.id, 4).map((person, peepIndex) => avatarImg(person.avatar, peepIndex, "", person.name)).join("")}
+            ${visiblePeople.slice(0, 4).map((person, peepIndex) => avatarImg(person.avatar, peepIndex, "", person.name)).join("")}
           </span>
         </button>
-      `).join("");
+      `;
+      }).join("");
     }
 
     function renderExpandedPathPanel(path) {

@@ -39,9 +39,11 @@ async def search(
     query: str = Query(..., min_length=1),
     clarification: str = Query("", description="Optional one-time clarification answer."),
     count: int = Query(20, ge=1, le=50),
+    debug: bool = Query(False, description="Run slower LLM path clustering debug."),
 ) -> dict:
     return await search_life_samples(
         query=query,
         clarification=clarification,
         count=count,
+        llm_path_cluster_debug=debug,
     )
