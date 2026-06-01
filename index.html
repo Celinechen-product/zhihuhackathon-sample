@@ -3162,8 +3162,11 @@
       "出来工作后，父母要求给他们钱怎么办",
       "不工作之后，我想去新西兰生活"
     ];
-    const AUTH_LOGIN_URL = "http://127.0.0.1:8000/auth/zhihu/login";
-    const API_BASE = window.LIFE_PATH_API_BASE || "http://127.0.0.1:8000";
+    const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    const API_BASE = window.LIFE_PATH_API_BASE || (isLocalhost ? "http://127.0.0.1:8000" : "");
+    const AUTH_LOGIN_URL =
+      window.LIFE_PATH_AUTH_LOGIN_URL ||
+      (API_BASE ? new URL("/auth/zhihu/login", API_BASE).toString() : "/auth/zhihu/login");
 
     function peepSrc(file) {
       const name = String(file).endsWith(".svg") ? file : `openpeeps${file}.svg`;
@@ -4286,6 +4289,7 @@
 
     function apiUrl(path) {
       if (/^https?:\/\//.test(String(path))) return String(path);
+      if (!API_CONFIG.apiBase) return String(path);
       return new URL(path, API_CONFIG.apiBase).toString();
     }
 
