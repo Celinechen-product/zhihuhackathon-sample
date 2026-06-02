@@ -811,7 +811,7 @@
       position: relative;
       z-index: 12;
       width: min(860px, 100%);
-      margin: 8vh auto 0;
+      margin: 9vh auto 0;
       padding: 32px;
       border: 1px solid rgba(38, 35, 31, 0.08);
       border-radius: 28px;
@@ -883,8 +883,8 @@
 
     .loading .crowd-stage {
       top: auto;
-      bottom: 18px;
-      height: 32vh;
+      bottom: 34px;
+      height: 30vh;
       min-height: 285px;
       max-height: none;
       z-index: 8;
@@ -3215,6 +3215,8 @@
     }
 
     function preloadCrowdImages() {
+      if (crowdImagesPreloaded) return;
+      crowdImagesPreloaded = true;
       const preload = () => {
         crowdPeepIds.forEach((id) => {
           const image = new Image();
@@ -3636,6 +3638,7 @@
       previousState: null,
       hasSubmittedQuestion: false,
       submittedQuestion: "",
+      questionDraft: "",
       needClarification: false,
       clarificationQuestion: "",
       clarificationOptions: [],
@@ -3674,9 +3677,9 @@
     let spotlightTimer = null;
     let homePromptTimer = null;
     let crowdMarkup = "";
+    let crowdImagesPreloaded = false;
     const app = document.getElementById("app");
     const toastRoot = document.getElementById("toastRoot");
-    preloadCrowdImages();
 
     function defaultQuestionText() {
       return "你好，我看到你曾经分享过一段相近经历。\n\n想基于这段公开分享了解两个问题：\n1. 这段经历里，最难的一步是什么？\n2. 如果重新经历一次，公开内容里有没有提到你会怎么做？";
@@ -4679,13 +4682,14 @@
 
     function renderHome() {
       const prompt = queryPrompts[state.promptIndex % queryPrompts.length];
+      const inputValue = state.homeInputTouched ? state.questionDraft : "";
       return `
         <section class="screen home">
           <div class="center-stack">
             <h1>有什么让你纠结了很久的事？越具体越好</h1>
-            <div class="question-card ${state.homeInputTouched ? "is-editing" : ""}" data-active-prompt="${escapeHtml(prompt)}">
+            <div class="question-card ${state.homeInputTouched ? "is-editing" : ""} ${inputValue ? "has-value" : ""}" data-active-prompt="${escapeHtml(prompt)}">
               <label class="sr-only" for="questionInput">输入真实困惑</label>
-              <textarea id="questionInput" class="question-input" data-prompt="${escapeHtml(prompt)}"></textarea>
+              <textarea id="questionInput" class="question-input" data-prompt="${escapeHtml(prompt)}">${escapeHtml(inputValue)}</textarea>
               <div class="query-placeholder" id="queryPlaceholder">${escapeHtml(prompt)}</div>
               <button class="send-query" type="button" data-action="start" aria-label="发送当前问题">→</button>
             </div>
@@ -4759,7 +4763,8 @@
       const activePrompt = input?.dataset.prompt || queryPrompts[state.promptIndex % queryPrompts.length];
 
       state.question = input ? input.value.trim() || activePrompt : activePrompt;
-      state.homeInputTouched = false;
+      state.questionDraft = state.question;
+      state.homeInputTouched = true;
 
       state.needClarification = false;
       state.clarificationQuestion = "";
@@ -4824,8 +4829,10 @@
       state.loadingStep = 0;
       state.hasSubmittedQuestion = true;
       state.submittedQuestion = state.question;
+      state.questionDraft = state.question;
       state.analysisSteps = defaultAnalysisSteps(state.question);
       state.focusTags = ["身份周期", "现金流", "工作边界", "回流代价"];
+      preloadCrowdImages();
       setPage("loading");
       clearLoadingTimers();
       const searchPromise = requestSearchData(state.question).then((searchData) => {
@@ -5658,6 +5665,7 @@
           card?.classList.add("is-editing");
         });
         homeInput.addEventListener("input", () => {
+          state.questionDraft = homeInput.value;
           updateInputState();
           state.needClarification = false;
           state.clarificationQuestion = "";
