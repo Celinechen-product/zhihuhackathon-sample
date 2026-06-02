@@ -612,6 +612,7 @@
       background:
         linear-gradient(180deg, rgba(251, 247, 239, 0), rgba(255, 255, 255, 0.26) 22%, rgba(247, 241, 231, 0.54) 100%);
       mask-image: linear-gradient(to bottom, transparent 0, #000 13%, #000 100%);
+      contain: layout paint;
     }
 
     .crowd-row {
@@ -624,8 +625,9 @@
       width: max-content;
       opacity: var(--opacity);
       filter: blur(var(--blur));
-      transform: translateX(0);
+      transform: translate3d(0, 0, 0);
       animation: crowdWalk var(--speed) linear infinite;
+      will-change: transform;
     }
 
     .crowd-row.reverse {
@@ -640,6 +642,7 @@
       animation: bob 2.7s ease-in-out infinite;
       animation-delay: var(--delay);
       transform-origin: 50% 100%;
+      will-change: transform;
     }
 
     .walker img {
@@ -648,6 +651,7 @@
       height: 100%;
       object-fit: contain;
       filter: saturate(0.68) contrast(0.92) drop-shadow(0 12px 18px rgba(52, 43, 32, 0.11));
+      backface-visibility: hidden;
     }
 
     .walker .head {
@@ -831,12 +835,21 @@
     }
 
     .pulse-dot {
+      position: relative;
       width: 16px;
       height: 16px;
       border-radius: 50%;
       background: var(--warm);
-      box-shadow: 0 0 0 0 rgba(244, 211, 94, 0.6);
+    }
+
+    .pulse-dot::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: rgba(244, 211, 94, 0.42);
       animation: pulse 1.6s ease infinite;
+      will-change: transform, opacity;
     }
 
     .fingerprint-steps {
@@ -881,8 +894,14 @@
       mask-image: linear-gradient(to bottom, transparent 0, #000 8%, #000 100%);
     }
 
+    .loading .crowd-row {
+      filter: none;
+      transform: translate3d(0, 0, 0);
+      will-change: transform;
+    }
+
     .loading .walker img {
-      filter: saturate(0.74) contrast(0.96) drop-shadow(0 14px 20px rgba(52, 43, 32, 0.12));
+      filter: none;
     }
 
     body[data-page="loading"] .crowd-row {
@@ -894,7 +913,7 @@
     }
 
     body[data-page="loading"] .walker {
-      animation: bob 2.7s ease-in-out infinite;
+      animation: loadingBob 2.7s ease-in-out infinite;
       animation-delay: var(--delay);
     }
 
@@ -3031,8 +3050,13 @@
     }
 
     @keyframes loadingCrowdWalk {
-      from { transform: translateX(0); }
-      to { transform: translateX(-50%); }
+      from { transform: translate3d(0, 0, 0); }
+      to { transform: translate3d(-50%, 0, 0); }
+    }
+
+    @keyframes loadingBob {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(0, -7px, 0); }
     }
 
     @keyframes bob {
@@ -3041,9 +3065,9 @@
     }
 
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(244, 211, 94, 0.52); }
-      70% { box-shadow: 0 0 0 18px rgba(244, 211, 94, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(244, 211, 94, 0); }
+      0% { opacity: 0.72; transform: scale(1); }
+      70% { opacity: 0; transform: scale(2.2); }
+      100% { opacity: 0; transform: scale(2.2); }
     }
 
     @keyframes sampleWalk {
@@ -3132,7 +3156,7 @@
       }
 
       body[data-page="loading"] .walker {
-        animation: bob 2.7s ease-in-out infinite !important;
+        animation: loadingBob 2.7s ease-in-out infinite !important;
         animation-delay: var(--delay) !important;
       }
     }
@@ -3188,6 +3212,21 @@
     function avatarImg(value, index = 0, className = "", alt = "") {
       const classAttr = className ? ` class="${escapeHtml(className)}"` : "";
       return `<img${classAttr} src="${escapeHtml(avatarSrc(value, index))}" alt="${escapeHtml(alt)}" onerror="this.onerror=null;this.src='${escapeHtml(avatarFallbackSrc(index))}'">`;
+    }
+
+    function preloadCrowdImages() {
+      const preload = () => {
+        crowdPeepIds.forEach((id) => {
+          const image = new Image();
+          image.decoding = "async";
+          image.src = peepSrc(id);
+        });
+      };
+      if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(preload, { timeout: 1200 });
+      } else {
+        setTimeout(preload, 250);
+      }
     }
 
     const API_CONFIG = {
@@ -3634,8 +3673,10 @@
     let loadingTimers = [];
     let spotlightTimer = null;
     let homePromptTimer = null;
+    let crowdMarkup = "";
     const app = document.getElementById("app");
     const toastRoot = document.getElementById("toastRoot");
+    preloadCrowdImages();
 
     function defaultQuestionText() {
       return "你好，我看到你曾经分享过一段相近经历。\n\n想基于这段公开分享了解两个问题：\n1. 这段经历里，最难的一步是什么？\n2. 如果重新经历一次，公开内容里有没有提到你会怎么做？";
@@ -4596,6 +4637,7 @@
     }
 
     function renderCrowd() {
+      if (crowdMarkup) return crowdMarkup;
       const makeRow = (count, scale, offset = 0) => Array.from({ length: count }, (_, index) => {
         const peepId = crowdPeepIds[(index + offset) % crowdPeepIds.length];
         const w = Math.round((74 + (index % 5) * 12) * scale);
@@ -4606,13 +4648,14 @@
           </div>
         `;
       }).join("");
-      return `
+      crowdMarkup = `
         <div class="crowd-stage" aria-hidden="true">
-          <div class="crowd-row" style="--bottom:-18px;--gap:18px;--opacity:1;--blur:0px;--speed:16s">${makeRow(22, 1.16, 0)}${makeRow(22, 1.16, 1)}</div>
-          <div class="crowd-row reverse" style="--bottom:28px;--gap:28px;--opacity:.58;--blur:2px;--speed:22s">${makeRow(18, .88, 2)}${makeRow(18, .88, 3)}</div>
-          <div class="crowd-row" style="--bottom:88px;--gap:34px;--opacity:.36;--blur:5px;--speed:28s">${makeRow(16, .68, 1)}${makeRow(16, .68, 0)}</div>
+          <div class="crowd-row" style="--bottom:-18px;--gap:18px;--opacity:1;--blur:0px;--speed:18s">${makeRow(14, 1.16, 0)}${makeRow(14, 1.16, 1)}</div>
+          <div class="crowd-row reverse" style="--bottom:28px;--gap:28px;--opacity:.58;--blur:2px;--speed:25s">${makeRow(11, .88, 2)}${makeRow(11, .88, 3)}</div>
+          <div class="crowd-row" style="--bottom:88px;--gap:34px;--opacity:.36;--blur:5px;--speed:32s">${makeRow(9, .68, 1)}${makeRow(9, .68, 0)}</div>
         </div>
       `;
+      return crowdMarkup;
     }
 
     function renderClarificationCard() {
@@ -4662,17 +4705,25 @@
               <h1>正在寻找可能与你有相似经历的知友……</h1>
               <span class="pulse-dot" aria-hidden="true"></span>
             </div>
-            <div class="fingerprint-steps">
-              ${steps.map((step, index) => `
-                <div class="fingerprint-step ${index < state.loadingStep ? "is-done" : index === state.loadingStep ? "is-active" : ""}">
-                  <strong>${escapeHtml(step.label)}：</strong>${escapeHtml(step.value)}
-                </div>
-              `).join("")}
+            <div class="fingerprint-steps" data-steps-signature="${escapeHtml(loadingStepsSignature(steps))}">
+              ${renderLoadingStepItems(steps)}
             </div>
           </div>
           ${renderCrowd()}
         </section>
       `;
+    }
+
+    function renderLoadingStepItems(steps) {
+      return steps.map((step, index) => `
+        <div class="fingerprint-step ${index < state.loadingStep ? "is-done" : index === state.loadingStep ? "is-active" : ""}">
+          <strong>${escapeHtml(step.label)}：</strong>${escapeHtml(step.value)}
+        </div>
+      `).join("");
+    }
+
+    function loadingStepsSignature(steps) {
+      return JSON.stringify(steps.map((step) => [step.label, step.value]));
     }
 
     async function requestSearchData(query) {
@@ -4780,7 +4831,7 @@
       const searchPromise = requestSearchData(state.question).then((searchData) => {
         if (searchData.loadingSteps.length) {
           state.loadingSteps = searchData.loadingSteps;
-          if (state.page === "loading") render();
+          if (state.page === "loading") updateLoadingSteps();
         }
         return searchData;
       });
@@ -4809,6 +4860,15 @@
     }
 
     function updateLoadingSteps() {
+      const container = document.querySelector(".fingerprint-steps");
+      if (container) {
+        const steps = getLoadingSteps();
+        const signature = loadingStepsSignature(steps);
+        if (container.dataset.stepsSignature !== signature) {
+          container.innerHTML = renderLoadingStepItems(steps);
+          container.dataset.stepsSignature = signature;
+        }
+      }
       document.querySelectorAll(".fingerprint-step").forEach((node, index) => {
         node.classList.toggle("is-done", index < state.loadingStep);
         node.classList.toggle("is-active", index === state.loadingStep);
