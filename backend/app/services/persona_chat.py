@@ -70,7 +70,11 @@ async def _answer_with_llm(payload: PersonaChatRequest, public_text: str) -> str
             ),
         },
     ]
-    result = await call_llm_json(messages, temperature=0.15)
+    result = await call_llm_json(
+        messages,
+        task="persona_chat",
+        temperature=0.15,
+    )
     if result.get("insufficientContext"):
         return MISSING_PUBLIC_INFO_MESSAGE
     return _clean(result.get("answer"))

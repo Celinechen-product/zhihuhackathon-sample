@@ -71,6 +71,7 @@ async def main() -> int:
         query=args.query,
         response=response,
         cluster_debug=cluster_debug,
+        pipeline_debug=debug,
         output_path=OUTPUT_PATH,
     )
     return 0
@@ -113,6 +114,7 @@ def print_summary(
     query: str,
     response: dict[str, Any],
     cluster_debug: dict[str, Any],
+    pipeline_debug: dict[str, Any],
     output_path: Path,
 ) -> None:
     raw = cluster_debug.get("llmClusterPathsRaw")
@@ -133,6 +135,21 @@ def print_summary(
         "warnings/errors: "
         f"{json.dumps(warnings_and_errors(validation), ensure_ascii=False)}"
     )
+    print("llmDebug:")
+    llm_debug = pipeline_debug.get("llmDebug")
+    for item in llm_debug if isinstance(llm_debug, list) else []:
+        if not isinstance(item, dict):
+            continue
+        print(
+            "  "
+            f"task={item.get('task', '')} "
+            f"requested={provider_model(item.get('requested_provider'), item.get('requested_model'))} "
+            f"actual={provider_model(item.get('actual_provider'), item.get('actual_model'))} "
+            f"temperature={item.get('requested_temperature', '')}->{item.get('actual_temperature', '')} "
+            f"fallback={item.get('fallback_used', False)} "
+            f"reason={item.get('fallback_reason', '')} "
+            f"latencyMs={item.get('latency_ms', 0)}"
+        )
     print(f"raw debug JSON 保存路径: {output_path}")
 
 
@@ -155,6 +172,18 @@ def warnings_and_errors(validation: list[Any]) -> list[dict[str, Any]]:
         if item.get("level") in {"warning", "error"}:
             items.append(item)
     return items
+
+
+def provider_model(provider: Any, model: Any) -> str:
+    clean_provider = str(provider or "").strip()
+    clean_model = str(model or "").strip()
+    if not clean_provider and not clean_model:
+        return "(none)"
+    if not clean_model:
+        return clean_provider
+    if not clean_provider:
+        return clean_model
+    return f"{clean_provider}/{clean_model}"
 
 
 if __name__ == "__main__":

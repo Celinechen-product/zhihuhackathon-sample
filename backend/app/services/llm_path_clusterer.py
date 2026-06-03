@@ -8,7 +8,7 @@ from app.services.llm_client import (
     LLMClientError,
     LLMConfigurationError,
     LLMJSONDecodeError,
-    call_llm_json,
+    call_llm_task,
 )
 from app.services.llm_prompts import CLUSTER_PATHS_PROMPT
 
@@ -102,6 +102,7 @@ async def cluster_paths_with_llm_debug(
     people: list[dict[str, Any]] | None,
     rule_fallback_used: bool,
     enabled: bool = True,
+    llm_debug: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     valid_people = [person for person in people or [] if _person_id(person)]
     debug = _empty_debug(
@@ -127,7 +128,8 @@ async def cluster_paths_with_llm_debug(
         people=valid_people,
     )
     try:
-        raw = await call_llm_json(
+        raw = await call_llm_task(
+            task="path_clustering",
             messages=[
                 {"role": "system", "content": CLUSTER_PATHS_PROMPT},
                 {
@@ -135,7 +137,9 @@ async def cluster_paths_with_llm_debug(
                     "content": json.dumps(payload, ensure_ascii=False),
                 },
             ],
+            response_format="json",
             temperature=0.2,
+            debug=llm_debug,
         )
     except LLMConfigurationError as exc:
         debug["llmClusterValidationDebug"].append(

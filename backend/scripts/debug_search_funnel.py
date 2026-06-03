@@ -142,6 +142,7 @@ def query_understanding_section(
         "must_include_topics": _list(query_context.get("must_include_topics")),
         "must_exclude_topics": _list(query_context.get("must_exclude_topics")),
         "searchKeywords": _list(debug.get("searchKeywords") or debug.get("keywords")),
+        "llmDebug": _list(debug.get("llmDebug")),
     }
 
 
@@ -521,6 +522,21 @@ def print_section_a(section: dict[str, Any]) -> None:
     print(f"must_include_topics: {_json(section['must_include_topics'])}")
     print(f"must_exclude_topics: {_json(section['must_exclude_topics'])}")
     print(f"searchKeywords: {_json(section['searchKeywords'])}")
+    print("llmDebug:")
+    for item in section["llmDebug"]:
+        if not isinstance(item, dict):
+            continue
+        print(
+            "    "
+            f"task={item.get('task', '')} "
+            f"requested={_provider_model(item.get('requested_provider'), item.get('requested_model'))} "
+            f"actual={_provider_model(item.get('actual_provider'), item.get('actual_model'))} "
+            f"temperature={item.get('requested_temperature', '')}->{item.get('actual_temperature', '')} "
+            f"fallback={item.get('fallback_used', False)} "
+            f"reason={item.get('fallback_reason', '')} "
+            f"json={item.get('json_parse_ok', False)} "
+            f"latencyMs={item.get('latency_ms', 0)}"
+        )
 
 
 def print_section_b(section: dict[str, Any]) -> None:
@@ -1484,6 +1500,18 @@ def _limit(value: str, limit: int) -> str:
 
 def _json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False)
+
+
+def _provider_model(provider: Any, model: Any) -> str:
+    clean_provider = _text(provider)
+    clean_model = _text(model)
+    if not clean_provider and not clean_model:
+        return "(none)"
+    if not clean_model:
+        return clean_provider
+    if not clean_provider:
+        return clean_model
+    return f"{clean_provider}/{clean_model}"
 
 
 if __name__ == "__main__":

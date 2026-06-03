@@ -151,6 +151,7 @@ class DebugInfo(BaseModel):
     llmPeopleDraftCount: int = 0
     llmPeopleDraft: list[dict[str, Any]] = Field(default_factory=list)
     llmErrors: list[Any] = Field(default_factory=list)
+    llmDebug: list[dict[str, Any]] = Field(default_factory=list)
     llmPeopleUsed: bool = False
     llmPeopleUsedCount: int = 0
     rulePeopleFallbackUsed: bool = False

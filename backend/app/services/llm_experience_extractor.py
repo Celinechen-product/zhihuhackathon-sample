@@ -13,7 +13,7 @@ from app.services.llm_client import (
     LLMClientError,
     LLMConfigurationError,
     LLMJSONDecodeError,
-    call_llm_json,
+    call_llm_task,
 )
 from app.services.llm_prompts import EXTRACT_PERSON_EXPERIENCE_PROMPT
 
@@ -51,6 +51,7 @@ async def extract_people_with_llm(
     limit: int = 8,
     query_context: dict[str, Any] | None = None,
     timing_debug: list[dict[str, Any]] | None = None,
+    llm_debug: list[dict[str, Any]] | None = None,
 ) -> tuple[list[dict], list[Any]]:
     if not settings.has_llm_config:
         return [], ["LLM config is missing"]
@@ -68,6 +69,7 @@ async def extract_people_with_llm(
                 clarification=clarification,
                 query_context=query_context,
                 timing_debug=timing_debug,
+                llm_debug=llm_debug,
             )
         )
         for index, item in enumerate(items)
@@ -96,6 +98,33 @@ async def extract_people_with_llm(
 
     for task in pending:
         item = task_items[task]
+        if llm_debug is not None:
+            llm_debug.append(
+                {
+                    "task": "experience_extraction",
+                    "requested_provider": "",
+                    "requested_model": "",
+                    "requested_model_env": "",
+                    "requested_temperature": None,
+                    "actual_temperature": None,
+                    "actual_provider": "",
+                    "actual_model": "",
+                    "actual_model_env": "",
+                    "provider": "",
+                    "base_url_host": "",
+                    "model": "",
+                    "http_status": None,
+                    "provider_error_message": "",
+                    "provider_error_type": "",
+                    "latency_ms": 0,
+                    "fallback_used": False,
+                    "fallback_reason": "overall_timeout",
+                    "json_parse_ok": False,
+                    "error": "LLM extraction overall timeout before item completed",
+                    "index": item["index"],
+                    "title": item["title"],
+                }
+            )
         errors.append(
             {
                 "index": item["index"],
@@ -119,6 +148,7 @@ async def _extract_one_timed(
     clarification: str | None,
     query_context: dict[str, Any] | None = None,
     timing_debug: list[dict[str, Any]] | None = None,
+    llm_debug: list[dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any] | None, list[Any]]:
     start = time.perf_counter()
     status = "started"
@@ -129,6 +159,7 @@ async def _extract_one_timed(
             query=query,
             clarification=clarification,
             query_context=query_context,
+            llm_debug=llm_debug,
         )
         if draft is not None:
             status = "accepted"
@@ -167,9 +198,11 @@ async def _extract_one(
     query: str,
     clarification: str | None,
     query_context: dict[str, Any] | None = None,
+    llm_debug: list[dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any] | None, list[Any]]:
     try:
-        response = await call_llm_json(
+        response = await call_llm_task(
+            task="experience_extraction",
             messages=[
                 {"role": "system", "content": EXTRACT_PERSON_EXPERIENCE_PROMPT},
                 {
@@ -185,7 +218,9 @@ async def _extract_one(
                     ),
                 },
             ],
+            response_format="json",
             temperature=0.2,
+            debug=llm_debug,
         )
     except LLMConfigurationError:
         return None, ["LLM config is missing"]
@@ -449,6 +484,7 @@ def _normalize_llm_draft(
         current_status = derived_current_status
     elif _should_prefer_derived_current_status(current_status, derived_current_status):
         current_status = derived_current_status
+    current_status = _current_status(current_status)
     real_details = _ensure_derived_real_details(real_details, item=item)
     if not key_fragments:
         key_fragments = real_details[:]
@@ -632,9 +668,9 @@ def _normalize_rejected_llm_draft(
             payload.get("author_experience_evidence") or payload.get("authorExperienceEvidence")
         )[:3],
         "timeline": _string_list(payload.get("timeline"))[:6],
-        "currentStatus": _text(payload.get("currentStatus") or payload.get("current_status")),
+        "currentStatus": _current_status(payload.get("currentStatus") or payload.get("current_status")),
         "entrySituation": _text(payload.get("entrySituation") or payload.get("entry_situation")),
-        "entryStatus": _text(payload.get("entryStatus") or payload.get("entry_status")),
+        "entryStatus": _entry_status(payload.get("entryStatus") or payload.get("entry_status")),
         "internal": {
             "matchReasons": _string_list(payload.get("matchReasons") or payload.get("match_reasons"))[:3],
             "confidence": _normalize_confidence(payload.get("confidence")) or "low",
@@ -710,10 +746,10 @@ def _preview(value: str) -> str:
 
 
 def _overall_timeout(item_count: int) -> float:
-    per_request = max(1.0, float(settings.llm_timeout_seconds or 20))
+    per_request = max(1.0, float(settings.llm_request_timeout_seconds or 20))
     max_concurrency = max(1, int(settings.llm_max_concurrency or 1))
     waves = max(1, ceil(item_count / max_concurrency))
-    return min(45.0, max(per_request + 2.0, waves * (per_request + 1.0)))
+    return max(per_request + 2.0, waves * (per_request + 1.0))
 
 
 def _error(item: dict[str, Any], label: str, exc: BaseException) -> dict[str, Any]:
@@ -774,21 +810,21 @@ def _derive_current_status_from_raw_text(item: dict[str, Any]) -> str:
         any(marker in evidence for marker in ("没有考上公务员", "没考上公务员", "没有上岸", "没上岸"))
         and "重新回到职场" in evidence
     ):
-        return "考公没有上岸，但焦虑感比裸辞初期减轻，接下来准备调整状态、重新回到职场。"
+        return "考公未上岸，准备调整状态回到职场"
     if (
         "裸辞" in evidence
         and any(marker in title for marker in ("没有上岸", "没上岸"))
         and any(marker in title for marker in ("治愈", "内耗", "迷茫"))
     ):
-        return "考公没有上岸，但裸辞后的内耗与迷茫已有缓解，接下来准备调整状态、重新回到职场。"
+        return "考公未上岸，内耗缓解，准备回职场"
     if "复试" in tail and any(marker in tail for marker in ("终面", "offer", "Offer", "面试通知")):
-        return "复试已经结束，可能进入终面，但原文尚未明确最终 offer 结果。"
+        return "复试结束，可能进入终面，最终 offer 未明确"
     if "销售助理" in tail and any(marker in tail for marker in ("一年九个月", "一年9个月")):
-        return "已经在销售助理岗位工作一年九个月，但仍不喜欢这份工作，暂时因现实压力没有再裸辞。"
+        return "在销售助理岗工作一年九个月，仍不喜欢"
     if any(marker in tail for marker in ("收到offer", "收到 offer", "收到Offer")) and any(
         marker in tail for marker in ("拒绝回职场", "不回职场", "继续自由职业")
     ):
-        return "35岁时收到 offer 但拒绝回职场，目前更倾向继续自由职业。"
+        return "收到 offer 后拒绝回职场，继续自由职业"
 
     sentences = [
         sentence.strip()
@@ -803,7 +839,7 @@ def _derive_current_status_from_raw_text(item: dict[str, Any]) -> str:
     ]
     if not candidates:
         return ""
-    return _limit_text("".join(candidates[-2:]), 120)
+    return _limit_text("".join(candidates[-1:]), 40)
 
 
 def _should_prefer_derived_current_status(current_status: str, derived_current_status: str) -> bool:
@@ -836,6 +872,14 @@ def _ensure_derived_real_details(
 
 def _entry_situation(value: str) -> str:
     return _limit_text(_strip_intro_words(value), 44)
+
+
+def _current_status(value: Any) -> str:
+    text = _strip_intro_words(_text(value))
+    if _is_weak_current_status(text):
+        return ""
+    text = re.split(r"(?<=[。！？!?])\s*", text)[0].strip()
+    return _limit_text(text, 40)
 
 
 def _entry_status(value: str) -> str:

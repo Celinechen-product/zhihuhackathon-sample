@@ -46,6 +46,7 @@ async def run_search_pipeline(
         "stages": [],
         "llmExtractionRuns": [],
     }
+    llm_debug: list[dict[str, Any]] = []
     query_context_start = time.perf_counter()
     combined_query = build_combined_query(clean_query, clean_clarification)
     understanding = understand_query(clean_query, clean_clarification)
@@ -163,6 +164,7 @@ async def run_search_pipeline(
         limit=8,
         query_context=query_context,
         timing_debug=llm_extraction_timings,
+        llm_debug=llm_debug,
     )
     llm_extraction_elapsed = _record_perf_stage(
         performance_debug,
@@ -343,6 +345,7 @@ async def run_search_pipeline(
                     limit=8,
                     query_context=query_context,
                     timing_debug=fallback_llm_extraction_timings,
+                    llm_debug=llm_debug,
                 )
                 fallback_llm_extraction_elapsed = _record_perf_stage(
                     performance_debug,
@@ -467,6 +470,7 @@ async def run_search_pipeline(
         people=people,
         rule_fallback_used=rule_people_fallback_used,
         enabled=llm_path_cluster_debug,
+        llm_debug=llm_debug,
     )
     _record_perf_stage(
         performance_debug,
@@ -509,6 +513,7 @@ async def run_search_pipeline(
         fallback_raw_results_count=fallback_raw_results_count,
     )
     response.setdefault("debug", {}).update(llm_cluster_debug)
+    response["debug"]["llmDebug"] = llm_debug
     response["debug"]["zhihuEnvDebug"] = _build_zhihu_env_debug()
     response["debug"]["zhihuSearchDebug"] = search_execution_debug
     response["debug"]["searchRecallDebug"] = _build_search_recall_debug(
