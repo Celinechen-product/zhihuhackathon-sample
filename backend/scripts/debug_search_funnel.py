@@ -844,6 +844,92 @@ def run_regression_cases() -> None:
         }
     )
 
+    paths, people, assignment_debug, _, _, _ = build_frontend_from_llm_people(
+        [
+            regression_draft(
+                person_id="regression_post_resignation_study_exam",
+                name="regression_post_resignation_study_exam",
+                filter_reason="",
+                can_be_person_sample=True,
+                situation="30岁裸辞后没有直接求职，而是准备考研。",
+                action_summary="裸辞后准备考研，初试后进入复试阶段。",
+                current_status="复试结束，尚未明确最终拟录取结果。",
+                entry_status="复试结束，最终结果未明确。",
+                real_details=[
+                    "裸辞后准备考研。",
+                    "初试后进入复试阶段。",
+                ],
+                author_evidence=["我裸辞后开始准备考研，后来进入复试。"],
+            )
+        ],
+        query=query,
+        clarification="",
+        query_context=query_context,
+    )
+    _assert_equal(len(people), 1, "post-resignation study/exam sample is kept")
+    _assert_equal(
+        people[0].get("pathId"),
+        "path_study_exam",
+        "post-resignation study/exam does not map to return_to_work",
+    )
+    _assert_equal(
+        "考研" in people[0].get("actionSummary", ""),
+        True,
+        "study/exam card actionSummary is query-relevant",
+    )
+    results.append(
+        {
+            "case": "post-resignation study exam avoids return_to_work",
+            "pathNames": [path.get("name") for path in paths],
+            "pathId": people[0].get("pathId"),
+            "actionSummary": people[0].get("actionSummary"),
+            "assignmentReason": assignment_debug[0].get("reason") if assignment_debug else "",
+        }
+    )
+
+    paths, people, assignment_debug, _, _, _ = build_frontend_from_llm_people(
+        [
+            regression_draft(
+                person_id="regression_post_resignation_uk_life",
+                name="regression_post_resignation_uk_life",
+                filter_reason="not yet entered query premise state",
+                can_be_person_sample=False,
+                situation="30岁裸辞后没有把求职作为主线。",
+                action_summary="裸辞后全家搬去英国生活，原文背景里出现过大厂 offer。",
+                current_status="目前主要在英国适应新的生活节奏。",
+                entry_status="全家搬去英国生活。",
+                real_details=[
+                    "裸辞后全家搬去英国生活。",
+                    "大厂 offer 是原文背景，不是裸辞后的主动作。",
+                ],
+                author_evidence=["我裸辞后全家搬去英国生活。"],
+            )
+        ],
+        query=query,
+        clarification="",
+        query_context=query_context,
+    )
+    _assert_equal(len(people), 1, "post-resignation migration/life sample is kept")
+    _assert_equal(
+        people[0].get("pathId"),
+        "path_migration_life",
+        "post-resignation UK life does not map to return_to_work",
+    )
+    _assert_equal(
+        people[0].get("actionSummary"),
+        "裸辞后全家搬往英国生活",
+        "UK life card actionSummary prioritizes post-resignation action",
+    )
+    results.append(
+        {
+            "case": "post-resignation UK life avoids return_to_work",
+            "pathNames": [path.get("name") for path in paths],
+            "pathId": people[0].get("pathId"),
+            "actionSummary": people[0].get("actionSummary"),
+            "assignmentReason": assignment_debug[0].get("reason") if assignment_debug else "",
+        }
+    )
+
     _, people, assignment_debug, filter_debug, _, _ = build_frontend_from_llm_people(
         [
             regression_draft(

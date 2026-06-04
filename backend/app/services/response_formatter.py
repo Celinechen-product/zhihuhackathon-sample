@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from collections import Counter
 from typing import Any
 
@@ -31,7 +32,13 @@ LLM_CONFIDENCE_PRIORITY = {
     "medium": 1,
     "low": 2,
 }
-LLM_PATH_SOURCE_FIELDS = ["situation", "actionSummary", "realDetails", "currentStatus"]
+LLM_PATH_SOURCE_FIELDS = [
+    "source.title",
+    "situation",
+    "actionSummary",
+    "realDetails",
+    "currentStatus",
+]
 AUTHOR_EXPERIENCE_OWNERS = {"author"}
 FORMAL_SAMPLE_TYPES = {"full_story", "partial_experience"}
 PUBLIC_EXAM_KEYWORDS = (
@@ -45,6 +52,31 @@ PUBLIC_EXAM_KEYWORDS = (
     "省考",
     "编制",
     "体制内考试",
+)
+STUDY_EXAM_KEYWORDS = (
+    "考研",
+    "读研",
+    "研究生",
+    "备考研究生",
+    "准备考研",
+    "考研复试",
+    "初试",
+    "复试",
+    "调剂",
+    "拟录取",
+)
+STUDY_EXAM_CONTEXT_KEYWORDS = (
+    "考研",
+    "读研",
+    "研究生",
+    "备考",
+    "初试",
+    "调剂",
+    "拟录取",
+    "院校",
+    "导师",
+    "上岸",
+    "读书",
 )
 PUBLIC_EXAM_CONTEXT_KEYWORDS = (
     "考公",
@@ -101,9 +133,6 @@ RETURN_TO_WORK_KEYWORDS = (
     "投简历",
     "投递简历",
     "面试",
-    "offer",
-    "复试",
-    "终面",
     "猎头",
     "入职",
     "接受工作",
@@ -145,6 +174,63 @@ RETURN_TO_WORK_STRONG_OUTCOME_KEYWORDS = (
     "拿到 offer",
     "拿到offer",
     "offer",
+)
+MIGRATION_LIFE_KEYWORDS = (
+    "搬家",
+    "搬去",
+    "搬到",
+    "搬往",
+    "全家搬",
+    "换城市",
+    "换国家",
+    "出国",
+    "移民",
+    "海外生活",
+    "国外生活",
+    "英国生活",
+    "搬去英国",
+    "搬到英国",
+    "搬往英国",
+    "全家搬去英国",
+    "全家搬到英国",
+    "旅居",
+    "定居",
+)
+MIGRATION_LIFE_LOCATION_KEYWORDS = (
+    "英国",
+    "海外",
+    "国外",
+    "欧洲",
+    "加拿大",
+    "澳洲",
+    "澳大利亚",
+    "美国",
+    "日本",
+    "新加坡",
+    "爱尔兰",
+    "新西兰",
+)
+POST_RESIGNATION_MARKERS = (
+    "裸辞后",
+    "辞职后",
+    "离职后",
+    "失业后",
+    "待业后",
+    "已裸辞",
+    "已经裸辞",
+    "已离职",
+    "已经离职",
+    "裸辞之后",
+    "辞职之后",
+    "离职之后",
+)
+PRE_RESIGNATION_BACKGROUND_MARKERS = (
+    "裸辞前",
+    "辞职前",
+    "离职前",
+    "裸辞之前",
+    "辞职之前",
+    "离职之前",
 )
 RETURN_TO_WORK_NEGATED_OUTCOME_KEYWORDS = (
     "未找到新工作",
@@ -712,10 +798,22 @@ CAREER_RESTART_POST_PREMISE_ACTION_MARKERS = (
     "接受一份",
     "重新工作",
     "重新就业",
+    "考研",
+    "读研",
+    "研究生",
+    "初试",
+    "复试",
     "创业",
     "自由职业",
     "换城市",
+    "换国家",
     "搬家",
+    "搬去",
+    "搬到",
+    "搬往",
+    "出国",
+    "移民",
+    "海外生活",
     "回老家",
 )
 CAREER_RESTART_POST_PREMISE_STATE_MARKERS = (
@@ -729,6 +827,20 @@ CAREER_RESTART_POST_PREMISE_STATE_MARKERS = (
     "辞职后未找工作",
     "裸辞后创业",
     "裸辞后尝试创业",
+    "裸辞后考研",
+    "裸辞后准备考研",
+    "裸辞后读研",
+    "裸辞后学习",
+    "裸辞后读书",
+    "裸辞后全家搬",
+    "裸辞后搬家",
+    "裸辞后搬去",
+    "裸辞后搬到",
+    "裸辞后搬往",
+    "裸辞后出国",
+    "裸辞后移民",
+    "裸辞后换城市",
+    "裸辞后换国家",
     "裸辞后找工作",
     "裸辞后休整",
     "离职后入职",
@@ -927,6 +1039,14 @@ PATH_DEFINITIONS: dict[str, dict[str, str]] = {
     "path_public_exam": {
         "name": "裸辞后考公/考编",
         "desc": "这些样本把考公考编作为阶段性方向，但结果和投入周期都存在不确定性。",
+    },
+    "path_study_exam": {
+        "name": "裸辞后学习/考试",
+        "desc": "这些样本把裸辞后的主要精力放在考研、读书或阶段性考试上，而不是直接回到求职轨道。",
+    },
+    "path_migration_life": {
+        "name": "裸辞后换环境生活",
+        "desc": "这些样本裸辞后的主要动作是搬家、换城市或出国生活，用新的环境重新安排日常。",
     },
     "path_rest_then_restart": {
         "name": "裸辞后先休整再重启",
@@ -1247,7 +1367,9 @@ def _assign_path_for_llm_person_with_debug(
 
 
 def _llm_path_text(person: dict[str, Any]) -> str:
+    source = person.get("source") if isinstance(person.get("source"), dict) else {}
     text_parts = [
+        source.get("title"),
         person.get("situation"),
         person.get("actionSummary"),
     ]
@@ -1270,16 +1392,30 @@ def _classify_llm_path(text: str, query_type: str) -> tuple[str, list[str], list
     ):
         return "", [], [OTHER_PATH_ID], "no trusted path for general query"
 
-    public_exam_matches = _matched_public_exam_keywords(text)
+    post_action_text = _career_post_resignation_action_text(text)
+    public_exam_matches = _matched_public_exam_keywords(post_action_text)
+    study_exam_matches = _matched_study_exam_keywords(post_action_text)
+    migration_life_matches = _matched_migration_life_keywords(post_action_text)
+    if not _has_post_resignation_action_context(text, PUBLIC_EXAM_KEYWORDS + PUBLIC_EXAM_CONTEXT_KEYWORDS):
+        public_exam_matches = []
+    if not _has_post_resignation_action_context(text, STUDY_EXAM_KEYWORDS + STUDY_EXAM_CONTEXT_KEYWORDS):
+        study_exam_matches = []
+    if not _has_post_resignation_action_context(text, MIGRATION_LIFE_KEYWORDS + MIGRATION_LIFE_LOCATION_KEYWORDS):
+        migration_life_matches = []
     restart_after_exam_matches = _matched_restart_after_exam_keywords(text)
-    if public_exam_matches and restart_after_exam_matches:
-        return CLUSTER_META["rest_then_restart"]["id"], restart_after_exam_matches, [], "career restart after failed exam"
     if public_exam_matches:
-        return CLUSTER_META["public_exam"]["id"], public_exam_matches, [], "explicit public exam evidence"
+        return CLUSTER_META["public_exam"]["id"], public_exam_matches, [], "post-resignation exam/stability evidence"
+    if study_exam_matches:
+        return "path_study_exam", study_exam_matches, [], "post-resignation study/exam evidence"
+    if migration_life_matches:
+        return "path_migration_life", migration_life_matches, [], "post-resignation migration/life-environment evidence"
+    if restart_after_exam_matches:
+        return CLUSTER_META["rest_then_restart"]["id"], restart_after_exam_matches, [], "career restart after failed exam"
 
-    strong_return_matches = _matched_return_to_work_strong_outcome_keywords(text)
+    return_action_text = post_action_text if _has_post_resignation_return_context(text) else ""
+    strong_return_matches = _matched_return_to_work_strong_outcome_keywords(return_action_text)
     if strong_return_matches:
-        return CLUSTER_META["return_to_work"]["id"], strong_return_matches, [], "strong return-to-work outcome evidence"
+        return CLUSTER_META["return_to_work"]["id"], strong_return_matches, [], "post-resignation return-to-work outcome evidence"
 
     freelance_final_matches = _matched_keywords(text, FREELANCE_FINAL_DIRECTION_KEYWORDS)
     if freelance_final_matches:
@@ -1289,9 +1425,9 @@ def _classify_llm_path(text: str, query_type: str) -> tuple[str, list[str], list
     if strong_rest_matches:
         return CLUSTER_META["rest_then_restart"]["id"], strong_rest_matches, [], "rest and direction-shift evidence"
 
-    return_to_work_matches = _matched_keywords(text, RETURN_TO_WORK_KEYWORDS)
+    return_to_work_matches = _matched_keywords(return_action_text, RETURN_TO_WORK_KEYWORDS)
     if return_to_work_matches:
-        return CLUSTER_META["return_to_work"]["id"], return_to_work_matches, [], "return-to-work evidence"
+        return CLUSTER_META["return_to_work"]["id"], return_to_work_matches, [], "post-resignation return-to-work evidence"
 
     freelance_main_matches = _matched_keywords(text, FREELANCE_MAIN_ACTION_KEYWORDS)
     if freelance_main_matches:
@@ -1306,6 +1442,83 @@ def _classify_llm_path(text: str, query_type: str) -> tuple[str, list[str], list
         return CLUSTER_META["rest_then_restart"]["id"], rest_restart_matches, [], "rest and restart evidence"
 
     return OTHER_PATH_ID, [], [], "no career path evidence"
+
+
+def _query_relevant_action_summary(
+    *,
+    query_context: dict[str, Any],
+    source_title: str = "",
+    situation: str,
+    action_summary: str,
+    real_details: list[str],
+    key_fragments: list[str],
+    current_status: str,
+    entry_status: str,
+) -> str:
+    if _text(query_context.get("query_type")) != "career_restart":
+        return action_summary
+    evidence = " ".join(
+        _text(part)
+        for part in (
+            situation,
+            source_title,
+            action_summary,
+            " ".join(real_details),
+            " ".join(key_fragments),
+            current_status,
+            entry_status,
+        )
+        if _text(part)
+    )
+    post_action_text = _career_post_resignation_action_text(evidence)
+    if _matched_public_exam_keywords(post_action_text) and _has_post_resignation_action_context(
+        evidence,
+        PUBLIC_EXAM_KEYWORDS + PUBLIC_EXAM_CONTEXT_KEYWORDS,
+    ):
+        if "考编" in post_action_text:
+            return "裸辞后转向考编路径"
+        if "考公" in post_action_text or "公务员" in post_action_text:
+            return "裸辞后转向考公路径"
+        return "裸辞后转向稳定考试路径"
+    if _matched_study_exam_keywords(post_action_text) and _has_post_resignation_action_context(
+        evidence,
+        STUDY_EXAM_KEYWORDS + STUDY_EXAM_CONTEXT_KEYWORDS,
+    ):
+        return _study_exam_action_summary(post_action_text)
+    if _matched_migration_life_keywords(post_action_text) and _has_post_resignation_action_context(
+        evidence,
+        MIGRATION_LIFE_KEYWORDS + MIGRATION_LIFE_LOCATION_KEYWORDS,
+    ):
+        return _migration_life_action_summary(post_action_text)
+    return action_summary
+
+
+def _study_exam_action_summary(text: str) -> str:
+    clean = _text(text)
+    if "考研" in clean and "复试" in clean:
+        return "裸辞后准备考研，并走到复试阶段"
+    if "复试" in clean and _matched_study_exam_keywords(clean):
+        return "裸辞后进入考试复试阶段"
+    if "研究生" in clean or "读研" in clean or "考研" in clean:
+        return "裸辞后准备考研/读研路径"
+    if "读书" in clean or "学习" in clean:
+        return "裸辞后转向读书学习路径"
+    return "裸辞后转向学习考试路径"
+
+
+def _migration_life_action_summary(text: str) -> str:
+    clean = _text(text)
+    if "英国" in clean and "全家" in clean:
+        return "裸辞后全家搬往英国生活"
+    if "英国" in clean:
+        return "裸辞后搬往英国生活"
+    if any(marker in clean for marker in ("出国", "海外", "国外", "换国家")):
+        return "裸辞后转向出国/海外生活"
+    if "换城市" in clean:
+        return "裸辞后换城市重新生活"
+    if "搬" in clean:
+        return "裸辞后搬家换环境生活"
+    return "裸辞后换环境重新生活"
 
 
 def _classify_family_money_path(text: str) -> tuple[str, list[str], list[str], str]:
@@ -1416,6 +1629,102 @@ def _has_new_zealand_presence(text: str) -> bool:
     )
 
 
+def _career_post_resignation_action_text(text: str) -> str:
+    clean = _text(text)
+    if not clean:
+        return ""
+
+    suffixes: list[str] = []
+    for marker in POST_RESIGNATION_MARKERS:
+        start = clean.find(marker)
+        if start >= 0:
+            suffixes.append(clean[start:])
+    if suffixes:
+        return " ".join(sorted(suffixes, key=len))
+
+    if _matched_post_premise_state_markers(clean):
+        return _drop_pre_resignation_background(clean)
+    if "裸辞" in clean or "辞职" in clean or "离职" in clean or "失业" in clean:
+        return _drop_pre_resignation_background(clean)
+    return clean
+
+
+def _has_post_resignation_return_context(text: str) -> bool:
+    clean = _text(text)
+    if not clean:
+        return False
+    if any(marker in clean for marker in POST_RESIGNATION_MARKERS):
+        return True
+    state_matches = _matched_post_premise_state_markers(clean)
+    return bool(
+        state_matches
+        or any(marker in clean for marker in ("待业", "无工作", "没工作", "没有工作", "空窗", "失业"))
+    )
+
+
+def _has_post_resignation_action_context(text: str, action_keywords: tuple[str, ...]) -> bool:
+    clean = _text(text)
+    if not clean:
+        return False
+    action_pattern = "|".join(
+        re.escape(keyword)
+        for keyword in sorted(set(action_keywords), key=len, reverse=True)
+        if _text(keyword)
+    )
+    if not action_pattern:
+        return False
+    post_marker_pattern = "|".join(re.escape(marker) for marker in POST_RESIGNATION_MARKERS)
+    premise_pattern = r"裸辞|辞职|离职|失业|待业"
+    if re.search(rf"({post_marker_pattern}).{{0,80}}({action_pattern})", clean):
+        return True
+    if re.search(rf"({premise_pattern}).{{0,32}}({action_pattern})", clean):
+        return True
+    if re.search(rf"({action_pattern}).{{0,32}}({premise_pattern})", clean):
+        return True
+    return False
+
+
+def _drop_pre_resignation_background(text: str) -> str:
+    clean = _text(text)
+    if not clean:
+        return ""
+    parts = re.split(r"(?<=[。！？!?；;])\s*|[，,]\s*", clean)
+    kept: list[str] = []
+    for part in parts:
+        if not part:
+            continue
+        if any(marker in part for marker in PRE_RESIGNATION_BACKGROUND_MARKERS):
+            continue
+        kept.append(part)
+    return " ".join(kept) or clean
+
+
+def _matched_study_exam_keywords(text: str) -> list[str]:
+    clean = _text(text)
+    if not clean:
+        return []
+    matches = _matched_keywords(
+        clean,
+        tuple(keyword for keyword in STUDY_EXAM_KEYWORDS if keyword != "复试"),
+    )
+    has_study_context = bool(_matched_keywords(clean, STUDY_EXAM_CONTEXT_KEYWORDS))
+    if "复试" in clean and has_study_context:
+        matches.append("复试")
+    if re.search(r"(裸辞后|辞职后|离职后|失业后).{0,16}(读书|学习|继续学习|继续读书)", clean):
+        matches.append("读书/学习")
+    return _dedupe(matches)
+
+
+def _matched_migration_life_keywords(text: str) -> list[str]:
+    clean = _text(text)
+    if not clean:
+        return []
+    matches = _matched_keywords(clean, MIGRATION_LIFE_KEYWORDS)
+    if "搬" in clean:
+        matches.extend(_matched_keywords(clean, MIGRATION_LIFE_LOCATION_KEYWORDS))
+    return _dedupe(matches)
+
+
 def _matched_restart_after_exam_keywords(text: str) -> list[str]:
     lower_text = _text(text).lower()
     has_exam_result = any(
@@ -1466,6 +1775,17 @@ def _matched_return_to_work_strong_outcome_keywords(text: str) -> list[str]:
     ]
 
 
+def _dedupe(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        clean = _text(value)
+        if clean and clean not in seen:
+            seen.add(clean)
+            result.append(clean)
+    return result
+
+
 def _is_valid_people_draft(
     draft: dict[str, Any],
     valid_path_ids: set[str] | None,
@@ -1514,6 +1834,16 @@ def _build_llm_frontend_person(
     source_type = _normalize_llm_source_type(source.get("type") or source.get("content_type"))
     if _is_weak_entry_status(current_status):
         current_status = ""
+    action_summary = _query_relevant_action_summary(
+        query_context=context,
+        source_title=_text(source.get("title")),
+        situation=situation,
+        action_summary=action_summary,
+        real_details=real_details_all,
+        key_fragments=key_fragments,
+        current_status=current_status,
+        entry_status=entry_status,
+    )
     is_personal_experience = _boolish(
         draft.get("isPersonalExperience")
         if "isPersonalExperience" in draft
@@ -2833,6 +3163,8 @@ def _llm_path_desc(cluster_key: str) -> str:
         "return_to_work": "这些样本主要回到求职轨道，在投简历、面试和岗位预期之间重新找位置。",
         "freelance_trials": "这些样本把裸辞后的空档用于副业、接单或自由职业试错，同时面对收入波动。",
         "public_exam": "这些样本把考公考编作为阶段性方向，但结果和投入周期都存在不确定性。",
+        "study_exam": "这些样本把裸辞后的主要精力放在考研、读书或阶段性考试上，而不是直接回到求职轨道。",
+        "migration_life": "这些样本裸辞后的主要动作是搬家、换城市或出国生活，用新的环境重新安排日常。",
         "rest_then_restart": "这些样本先停下来恢复状态，再慢慢观察职业方向和下一步行动。",
         "path_family_support_money": "这些样本记录了工作后给父母或家庭持续经济支持时的压力、拉扯和调整。",
         "path_family_money_boundary": "这些样本在被父母要钱或长期补贴后，开始减少支持、拒绝给钱或重新划分责任。",

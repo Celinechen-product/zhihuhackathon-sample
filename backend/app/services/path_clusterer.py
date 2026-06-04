@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import re
 from collections import Counter
 from typing import Any
 
@@ -17,6 +18,14 @@ CLUSTER_META = {
     "public_exam": {
         "id": "path_public_exam",
         "name": "裸辞后考公/考编",
+    },
+    "study_exam": {
+        "id": "path_study_exam",
+        "name": "裸辞后学习/考试",
+    },
+    "migration_life": {
+        "id": "path_migration_life",
+        "name": "裸辞后换环境生活",
     },
     "rest_then_restart": {
         "id": "path_rest_then_restart",
@@ -75,16 +84,33 @@ def cluster_people_drafts(
 
 def _resolve_cluster_key(person: dict[str, Any]) -> str:
     suggested_cluster = _text(person.get("suggested_cluster"))
+    choice_action = _text(person.get("choice_action"))
+    outcome = _text(person.get("outcome"))
+    constraints = " ".join(str(item) for item in person.get("constraints") or [])
+    priority_text = f"{choice_action} {outcome} {constraints} {suggested_cluster}"
+    priority_cluster_key = _priority_cluster_key_from_text(priority_text)
+    if priority_cluster_key:
+        return priority_cluster_key
+
     cluster_key = _cluster_key_from_text(suggested_cluster)
     if cluster_key:
         return cluster_key
 
-    choice_action = _text(person.get("choice_action"))
-    outcome = _text(person.get("outcome"))
-    constraints = " ".join(str(item) for item in person.get("constraints") or [])
     fallback_text = f"{choice_action} {outcome} {constraints}"
     cluster_key = _cluster_key_from_text(fallback_text)
     return cluster_key or "other_related_experience"
+
+
+def _priority_cluster_key_from_text(value: str) -> str:
+    if not value:
+        return ""
+    if _has_study_exam_evidence(value):
+        return "study_exam"
+    if any(marker in value for marker in ("考公", "考编", "公务员", "事业编", "上岸")):
+        return "public_exam"
+    if any(marker in value for marker in ("搬家", "搬去", "搬到", "搬往", "出国", "移民", "换城市", "换国家", "英国", "海外生活", "旅居", "定居")):
+        return "migration_life"
+    return ""
 
 
 def _cluster_key_from_text(value: str) -> str:
@@ -94,8 +120,12 @@ def _cluster_key_from_text(value: str) -> str:
         return "return_to_work"
     if any(marker in value for marker in ("自由职业", "副业", "接单", "收入不稳定")):
         return "freelance_trials"
-    if any(marker in value for marker in ("考公", "考编", "上岸")):
+    if any(marker in value for marker in ("考公", "考编", "公务员", "事业编", "上岸")):
         return "public_exam"
+    if _has_study_exam_evidence(value):
+        return "study_exam"
+    if any(marker in value for marker in ("搬家", "搬去", "搬到", "搬往", "出国", "移民", "换城市", "换国家", "英国", "海外生活", "旅居", "定居")):
+        return "migration_life"
     if any(marker in value for marker in ("回老家", "低成本")):
         return "hometown_low_cost"
     if any(marker in value for marker in ("低压", "生活方式")):
@@ -103,6 +133,16 @@ def _cluster_key_from_text(value: str) -> str:
     if any(marker in value for marker in ("休整", "重启", "内耗", "健康", "迷茫")):
         return "rest_then_restart"
     return ""
+
+
+def _has_study_exam_evidence(value: str) -> bool:
+    if any(marker in value for marker in ("考研", "读研", "研究生", "初试")):
+        return True
+    if re.search(r"(裸辞后|辞职后|离职后|失业后).{0,16}(读书|学习|继续学习|继续读书)", value):
+        return True
+    if "复试" in value and any(marker in value for marker in ("考研", "研究生", "初试", "调剂", "拟录取", "院校", "导师")):
+        return True
+    return False
 
 
 def _build_path(
@@ -131,6 +171,8 @@ def _build_desc(cluster_key: str, samples: list[dict[str, Any]]) -> str:
         "return_to_work": "他们裸辞后主要回到求职轨道，在投简历、面试和降预期中重新找位置。",
         "freelance_trials": "他们把裸辞后的空档用来试副业、接单或自由职业，也承担收入波动。",
         "public_exam": "他们把考公考编作为阶段性方向，但结果不一定稳定或成功。",
+        "study_exam": "他们把裸辞后的主要精力放到考研、读书或阶段性考试上，而不是直接回到求职轨道。",
+        "migration_life": "他们裸辞后的主要动作是搬家、换城市或出国生活，用新的环境重新安排日常。",
         "rest_then_restart": "他们没有马上求职，而是先停下来恢复状态，再慢慢判断下一步。",
         "low_pressure_life": "他们转向更低压的生活方式，但仍要重新安排收入和日常。",
         "hometown_low_cost": "他们选择回老家或降低生活成本，用更低压力重新观察职业方向。",
