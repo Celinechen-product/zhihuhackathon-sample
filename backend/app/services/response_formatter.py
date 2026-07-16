@@ -175,6 +175,40 @@ RETURN_TO_WORK_STRONG_OUTCOME_KEYWORDS = (
     "拿到offer",
     "offer",
 )
+PUBLIC_EXAM_WEAK_ATTEMPT_KEYWORDS = (
+    "想考公",
+    "尝试考公",
+    "试水",
+    "裸考",
+    "排名",
+    "找编外未果",
+    "编外未果",
+)
+PUBLIC_EXAM_DOMINANT_KEYWORDS = (
+    "裸辞考公",
+    "裸辞后考公",
+    "裸辞后准备考公",
+    "辞职后考公",
+    "离职后考公",
+    "备考公务员",
+    "备考考公",
+    "全职考公",
+    "考公落幕",
+    "考公未上岸",
+    "考公没有上岸",
+    "把考公",
+    "考公作为",
+)
+RETURN_TO_WORK_LATE_ACTION_KEYWORDS = (
+    "继续求职",
+    "继续找工作",
+    "开始投简历",
+    "投简历两周",
+    "拿到 offer",
+    "拿到offer",
+    "offer被撤回",
+    "被撤回",
+)
 MIGRATION_LIFE_KEYWORDS = (
     "搬家",
     "搬去",
@@ -1403,6 +1437,20 @@ def _classify_llm_path(text: str, query_type: str) -> tuple[str, list[str], list
     if not _has_post_resignation_action_context(text, MIGRATION_LIFE_KEYWORDS + MIGRATION_LIFE_LOCATION_KEYWORDS):
         migration_life_matches = []
     restart_after_exam_matches = _matched_restart_after_exam_keywords(text)
+    return_action_text = post_action_text if _has_post_resignation_return_context(text) else ""
+    strong_return_matches = _matched_return_to_work_strong_outcome_keywords(return_action_text)
+    return_to_work_matches = _matched_keywords(return_action_text, RETURN_TO_WORK_KEYWORDS)
+    return_matches = _dedupe(strong_return_matches + return_to_work_matches)
+    if public_exam_matches and _weak_public_exam_attempt_yields_to_later_return(
+        post_action_text,
+        return_matches,
+    ):
+        return (
+            CLUSTER_META["return_to_work"]["id"],
+            return_matches,
+            [CLUSTER_META["public_exam"]["id"]],
+            "later return-to-work evidence after weak public-exam attempt",
+        )
     if public_exam_matches:
         return CLUSTER_META["public_exam"]["id"], public_exam_matches, [], "post-resignation exam/stability evidence"
     if study_exam_matches:
@@ -1412,8 +1460,6 @@ def _classify_llm_path(text: str, query_type: str) -> tuple[str, list[str], list
     if restart_after_exam_matches:
         return CLUSTER_META["rest_then_restart"]["id"], restart_after_exam_matches, [], "career restart after failed exam"
 
-    return_action_text = post_action_text if _has_post_resignation_return_context(text) else ""
-    strong_return_matches = _matched_return_to_work_strong_outcome_keywords(return_action_text)
     if strong_return_matches:
         return CLUSTER_META["return_to_work"]["id"], strong_return_matches, [], "post-resignation return-to-work outcome evidence"
 
@@ -1425,7 +1471,6 @@ def _classify_llm_path(text: str, query_type: str) -> tuple[str, list[str], list
     if strong_rest_matches:
         return CLUSTER_META["rest_then_restart"]["id"], strong_rest_matches, [], "rest and direction-shift evidence"
 
-    return_to_work_matches = _matched_keywords(return_action_text, RETURN_TO_WORK_KEYWORDS)
     if return_to_work_matches:
         return CLUSTER_META["return_to_work"]["id"], return_to_work_matches, [], "post-resignation return-to-work evidence"
 
@@ -1471,6 +1516,16 @@ def _query_relevant_action_summary(
         if _text(part)
     )
     post_action_text = _career_post_resignation_action_text(evidence)
+    return_action_text = post_action_text if _has_post_resignation_return_context(evidence) else ""
+    return_matches = _dedupe(
+        _matched_return_to_work_strong_outcome_keywords(return_action_text)
+        + _matched_keywords(return_action_text, RETURN_TO_WORK_KEYWORDS)
+    )
+    if _matched_public_exam_keywords(post_action_text) and _weak_public_exam_attempt_yields_to_later_return(
+        post_action_text,
+        return_matches,
+    ):
+        return action_summary
     if _matched_public_exam_keywords(post_action_text) and _has_post_resignation_action_context(
         evidence,
         PUBLIC_EXAM_KEYWORDS + PUBLIC_EXAM_CONTEXT_KEYWORDS,
@@ -1752,6 +1807,38 @@ def _matched_public_exam_keywords(text: str) -> list[str]:
     ):
         matches.append("备考")
     return matches
+
+
+def _weak_public_exam_attempt_yields_to_later_return(
+    post_action_text: str,
+    return_matches: list[str],
+) -> bool:
+    clean = _text(post_action_text)
+    if not clean or not return_matches:
+        return False
+    if _matched_keywords(clean, PUBLIC_EXAM_DOMINANT_KEYWORDS):
+        return False
+
+    weak_exam_matches = _matched_keywords(clean, PUBLIC_EXAM_WEAK_ATTEMPT_KEYWORDS)
+    late_return_matches = _matched_keywords(clean, RETURN_TO_WORK_LATE_ACTION_KEYWORDS)
+    if not weak_exam_matches or not late_return_matches:
+        return False
+
+    weak_exam_positions = [
+        clean.find(keyword)
+        for keyword in weak_exam_matches
+        if clean.find(keyword) >= 0
+    ]
+    late_return_positions = [
+        clean.find(keyword)
+        for keyword in late_return_matches
+        if clean.find(keyword) >= 0
+    ]
+    return bool(
+        weak_exam_positions
+        and late_return_positions
+        and max(late_return_positions) > min(weak_exam_positions)
+    )
 
 
 def _matched_keywords(text: str, keywords: tuple[str, ...]) -> list[str]:

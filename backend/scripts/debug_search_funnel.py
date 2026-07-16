@@ -930,6 +930,95 @@ def run_regression_cases() -> None:
         }
     )
 
+    paths, people, assignment_debug, _, _, _ = build_frontend_from_llm_people(
+        [
+            regression_draft(
+                person_id="regression_weak_public_exam_then_job_search",
+                name="regression_weak_public_exam_then_job_search",
+                filter_reason="",
+                can_be_person_sample=True,
+                situation="26岁，去年11月裸辞后待业近4个月，迷茫焦虑。",
+                action_summary=(
+                    "裸辞后先去日本玩了十多天，之后在家待业近4个月，尝试考公"
+                    "（裸考广东省考排名300多），尝试找编外未果，2026年3月开始"
+                    "投简历，拿到一个offer但因犹豫被撤回，继续求职。"
+                ),
+                current_status="2026年3月投简历两周，拿到一个offer但被撤回，继续求职。",
+                entry_status="2026年3月投简历两周，拿到一个offer但被撤回，继续求职。",
+                real_details=[
+                    "裸辞后尝试考公，裸考广东省考排名300多。",
+                    "尝试找编外未果。",
+                    "2026年3月开始投简历，拿到一个offer但被撤回，继续求职。",
+                ],
+                author_evidence=[
+                    "最近投了两周的简历，拿到一个offer但被撤回，继续求职。"
+                ],
+            )
+        ],
+        query=query,
+        clarification="",
+        query_context=query_context,
+    )
+    _assert_equal(len(people), 1, "weak public-exam attempt sample is kept")
+    _assert_equal(
+        people[0].get("pathId"),
+        "path_return_to_work",
+        "weak public-exam attempt followed by job search maps to return_to_work",
+    )
+    _assert_equal(
+        "考公路径" in people[0].get("actionSummary", ""),
+        False,
+        "weak public-exam attempt does not overwrite card actionSummary",
+    )
+    results.append(
+        {
+            "case": "weak public exam attempt yields to later job search",
+            "pathNames": [path.get("name") for path in paths],
+            "pathId": people[0].get("pathId"),
+            "actionSummary": people[0].get("actionSummary"),
+            "assignmentReason": assignment_debug[0].get("reason") if assignment_debug else "",
+        }
+    )
+
+    paths, people, assignment_debug, _, _, _ = build_frontend_from_llm_people(
+        [
+            regression_draft(
+                person_id="regression_dominant_public_exam_failed",
+                name="regression_dominant_public_exam_failed",
+                filter_reason="",
+                can_be_person_sample=True,
+                situation="30岁，在上海工作4年后裸辞，有存款但每月开销约4000元。",
+                action_summary="裸辞后把考公作为阶段性方向，考公没有上岸，但内耗有所缓解。",
+                current_status="考公未上岸，内耗缓解，准备回职场。",
+                entry_status="考公未上岸，内耗缓解，准备回职场。",
+                real_details=[
+                    "裸辞考公落幕，没有上岸。",
+                    "考公未上岸后，准备回职场。",
+                ],
+                author_evidence=["我裸辞后考公没有上岸，但内耗缓解。"],
+                source_title="裸辞考公落幕，没有上岸，却治愈了30岁的内耗与迷茫",
+            )
+        ],
+        query=query,
+        clarification="",
+        query_context=query_context,
+    )
+    _assert_equal(len(people), 1, "dominant public-exam sample is kept")
+    _assert_equal(
+        people[0].get("pathId"),
+        "path_public_exam",
+        "dominant public-exam path remains public_exam even after failed result",
+    )
+    results.append(
+        {
+            "case": "dominant public exam remains public_exam",
+            "pathNames": [path.get("name") for path in paths],
+            "pathId": people[0].get("pathId"),
+            "actionSummary": people[0].get("actionSummary"),
+            "assignmentReason": assignment_debug[0].get("reason") if assignment_debug else "",
+        }
+    )
+
     _, people, assignment_debug, filter_debug, _, _ = build_frontend_from_llm_people(
         [
             regression_draft(
