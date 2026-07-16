@@ -143,8 +143,6 @@ RETURN_TO_WORK_KEYWORDS = (
     "回职场",
     "回到职场",
     "重新就业",
-    "岗位",
-    "降薪",
     "小公司",
     "销售助理",
     "人事",
@@ -697,7 +695,8 @@ NEW_ZEALAND_WORK_VISA_KEYWORDS = (
     "绿卡",
 )
 NEW_ZEALAND_RETURN_KEYWORDS = ("回国", "回来了", "从新西兰回来", "去了又回来")
-NEW_ZEALAND_REMOTE_KEYWORDS = ("远程", "旅居", "数字游民", "自由职业", "打工换宿", "Helpx", "探索之旅")
+NEW_ZEALAND_REMOTE_INCOME_KEYWORDS = ("远程", "数字游民", "自由职业", "线上工作", "远程工作", "远程收入")
+NEW_ZEALAND_REMOTE_SOJOURN_KEYWORDS = ("旅居", "打工换宿", "Helpx", "探索之旅")
 NEW_ZEALAND_PREP_KEYWORDS = ("申请", "准备", "没去", "没有去", "没成行", "计划", "材料")
 ADVICE_ONLY_FILTER_REASON = "advice/commentary without author journey"
 ADVICE_MARKERS = (
@@ -1649,9 +1648,10 @@ def _classify_new_zealand_path(text: str) -> tuple[str, list[str], list[str], st
     study = _matched_keywords(text, NEW_ZEALAND_STUDY_KEYWORDS)
     if study:
         return "path_nz_study_work_visa", nz_evidence + study, [], "study pathway evidence"
-    remote = _matched_keywords(text, NEW_ZEALAND_REMOTE_KEYWORDS)
-    if remote:
-        return "path_nz_remote_sojourn", nz_evidence + remote, [], "remote income or sojourn evidence"
+    remote_income = _matched_keywords(text, NEW_ZEALAND_REMOTE_INCOME_KEYWORDS)
+    remote_sojourn = _matched_keywords(text, NEW_ZEALAND_REMOTE_SOJOURN_KEYWORDS)
+    if remote_income:
+        return "path_nz_remote_sojourn", nz_evidence + remote_income + remote_sojourn, [], "remote income evidence"
     work_visa = _matched_keywords(text, NEW_ZEALAND_WORK_VISA_KEYWORDS)
     if work_visa:
         return "path_nz_living_migrate", nz_evidence + work_visa, [], "work or work-visa pathway evidence"
@@ -1709,6 +1709,8 @@ def _has_post_resignation_return_context(text: str) -> bool:
     if not clean:
         return False
     if any(marker in clean for marker in POST_RESIGNATION_MARKERS):
+        return True
+    if any(marker in clean for marker in ("裸辞", "辞职", "离职", "失业")):
         return True
     state_matches = _matched_post_premise_state_markers(clean)
     return bool(

@@ -1112,6 +1112,42 @@ def run_regression_cases() -> None:
         }
     )
 
+    path_id, matched, _, reason = _classify_llm_path(
+        "30岁裸辞后休息三个月，后来开始找工作，最终入职一家小公司。",
+        "career_restart",
+    )
+    _assert_equal(
+        path_id,
+        "path_return_to_work",
+        "post-resignation rest followed by clear job outcome maps to return_to_work",
+    )
+    results.append(
+        {
+            "case": "rest then clear job outcome assignment",
+            "pathId": path_id,
+            "matched": matched,
+            "reason": reason,
+        }
+    )
+
+    path_id, matched, _, reason = _classify_llm_path(
+        "老板提出降薪后我裸辞，目前离职两个月，主要在恢复身体，还没有明确下一步。",
+        "career_restart",
+    )
+    _assert_equal(
+        path_id != "path_return_to_work",
+        True,
+        "pay-cut background alone must not map to return_to_work",
+    )
+    results.append(
+        {
+            "case": "pay cut background does not assign return-to-work",
+            "pathId": path_id,
+            "matched": matched,
+            "reason": reason,
+        }
+    )
+
     _, people, assignment_debug, filter_debug, _, _ = build_frontend_from_llm_people(
         [
             regression_draft(
@@ -1436,6 +1472,63 @@ def run_regression_cases() -> None:
             "pathId": people[0].get("pathId"),
             "assignmentReason": assignment_debug[0].get("reason") if assignment_debug else "",
             "migrationVerdict": filter_debug[0].get("migration_target_location_verdict") if filter_debug else "",
+        }
+    )
+
+    _, people, assignment_debug, filter_debug, _, _ = build_frontend_from_llm_people(
+        [
+            regression_draft(
+                person_id="regression_migration_nz_life_with_travel",
+                name="regression_migration_nz_life_with_travel",
+                filter_reason="",
+                can_be_person_sample=True,
+                situation="不工作后去新西兰生活，后来又去多个国家旅行。",
+                action_summary="我去了新西兰并在当地生活，后来和伴侣去土耳其、塞尔维亚和迪拜旅行。",
+                current_status="已经体验过新西兰生活，也继续旅行。",
+                entry_status="去新西兰生活一段时间。",
+                real_details=[
+                    "我去了新西兰并在当地生活。",
+                    "后来又去土耳其、塞尔维亚和迪拜旅行。",
+                ],
+                author_evidence=["我去了新西兰并在当地生活。"],
+                source_title="新西兰生活和后续旅行记录",
+            )
+        ],
+        query=migration_query,
+        clarification="",
+        query_context=migration_context,
+    )
+    _assert_equal(len(people), 1, "New Zealand life with travel stays valid")
+    _assert_equal(
+        people[0].get("pathId"),
+        "path_nz_living_migrate",
+        "travel or sojourn wording without remote income maps to living path",
+    )
+    results.append(
+        {
+            "case": "New Zealand life with travel is not remote income",
+            "peopleCount": len(people),
+            "pathId": people[0].get("pathId"),
+            "assignmentReason": assignment_debug[0].get("reason") if assignment_debug else "",
+            "migrationVerdict": filter_debug[0].get("migration_target_location_verdict") if filter_debug else "",
+        }
+    )
+
+    path_id, matched, _, reason = _classify_llm_path(
+        "我靠远程工作和自由职业收入，在新西兰旅居生活半年。",
+        "migration_new_zealand",
+    )
+    _assert_equal(
+        path_id,
+        "path_nz_remote_sojourn",
+        "remote income in New Zealand maps to remote sojourn path",
+    )
+    results.append(
+        {
+            "case": "New Zealand remote income sojourn assignment",
+            "pathId": path_id,
+            "matched": matched,
+            "reason": reason,
         }
     )
 
