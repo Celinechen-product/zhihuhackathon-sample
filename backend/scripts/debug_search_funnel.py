@@ -1148,6 +1148,42 @@ def run_regression_cases() -> None:
         }
     )
 
+    path_id, matched, _, reason = _classify_llm_path(
+        "裸辞前担心新公司不适应和搬家麻烦，后来因身体报警裸辞，已离职两个月。",
+        "career_restart",
+    )
+    _assert_equal(
+        path_id != "path_migration_life",
+        True,
+        "moving inconvenience before resignation must not map to migration life",
+    )
+    results.append(
+        {
+            "case": "pre-resignation moving concern is not migration",
+            "pathId": path_id,
+            "matched": matched,
+            "reason": reason,
+        }
+    )
+
+    path_id, matched, _, reason = _classify_llm_path(
+        "裸辞后搬家换环境生活，先离开原来的城市，重新安排日常节奏。",
+        "career_restart",
+    )
+    _assert_equal(
+        path_id,
+        "path_migration_life",
+        "actual move after resignation maps to migration life",
+    )
+    results.append(
+        {
+            "case": "actual post-resignation move assignment",
+            "pathId": path_id,
+            "matched": matched,
+            "reason": reason,
+        }
+    )
+
     _, people, assignment_debug, filter_debug, _, _ = build_frontend_from_llm_people(
         [
             regression_draft(

@@ -1777,9 +1777,24 @@ def _matched_migration_life_keywords(text: str) -> list[str]:
     if not clean:
         return []
     matches = _matched_keywords(clean, MIGRATION_LIFE_KEYWORDS)
+    if "搬家" in matches and not _has_actual_post_resignation_move_action(clean):
+        matches = [match for match in matches if match != "搬家"]
     if "搬" in clean:
         matches.extend(_matched_keywords(clean, MIGRATION_LIFE_LOCATION_KEYWORDS))
     return _dedupe(matches)
+
+
+def _has_actual_post_resignation_move_action(text: str) -> bool:
+    clean = _text(text)
+    if not clean:
+        return False
+    if re.search(r"(怕|担心|害怕|不想|不愿|嫌).{0,8}搬家|搬家.{0,8}(麻烦|成本|不便|折腾)", clean):
+        return False
+    return bool(
+        re.search(r"(裸辞后|辞职后|离职后|失业后|待业后).{0,32}搬家", clean)
+        or re.search(r"搬家.{0,16}(换环境|换城市|换国家|出国|生活|定居|落脚|安顿)", clean)
+        or re.search(r"搬家.{0,16}(到|去|往).{0,12}(英国|海外|国外|欧洲|加拿大|澳洲|澳大利亚|美国|日本|新加坡|爱尔兰|新西兰)", clean)
+    )
 
 
 def _matched_restart_after_exam_keywords(text: str) -> list[str]:
